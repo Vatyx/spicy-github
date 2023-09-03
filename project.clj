@@ -6,7 +6,8 @@
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [dev.nubank/clj-github "0.6.2"]
                  [clj-http "3.12.3"]
-                 [cheshire "5.11.0"]]
+                 [cheshire "5.11.0"]
+                 [org.postgresql/postgresql "42.2.10"]]
   :main ^:skip-aot spicy-github.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all
