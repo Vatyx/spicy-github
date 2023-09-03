@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Leiningen: clj-commons/fs:1.6.310">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/clj-commons/fs/1.6.310/fs-1.6.310.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

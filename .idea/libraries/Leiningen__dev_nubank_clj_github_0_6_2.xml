@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Leiningen: dev.nubank/clj-github:0.6.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/dev/nubank/clj-github/0.6.2/clj-github-0.6.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
