@@ -7,8 +7,16 @@
                  [dev.nubank/clj-github "0.6.2"]
                  [clj-http "3.12.3"]
                  [cheshire "5.11.0"]
-                 [org.postgresql/postgresql "42.2.10"]]
+                 [ring "1.10.0"]
+                 [ring/ring-defaults "0.3.4"]
+                 [compojure "1.7.0"]
+                 [org.clojure/java.jdbc "0.7.12"]
+                 [org.xerial/sqlite-jdbc "3.43.0.0"]]
   :main ^:skip-aot spicy-github.core
   :target-path "target/%s"
+  :plugins [[lein-ring "0.12.6"]]
+  :ring {:handler spicy-github.api/app}
   :profiles {:uberjar {:aot :all
-                       :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}})
+                       :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
+             :dev {:dependencies [[javax.servlet/servlet-api "2.5"]
+                                  [ring/ring-mock "0.3.2"]]}})
