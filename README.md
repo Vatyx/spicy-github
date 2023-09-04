@@ -6,6 +6,11 @@ FIXME: description
 
 Download from http://example.com/FIXME.
 
+## Dev
+To start the application server in headless mode, run the following command. It will start the server on port 3000.
+
+    $ lein ring server-headless
+
 ## Usage
 
 FIXME: explanation
