@@ -11,7 +11,8 @@
                  [ring/ring-defaults "0.3.4"]
                  [compojure "1.7.0"]
                  [org.clojure/java.jdbc "0.7.12"]
-                 [org.xerial/sqlite-jdbc "3.43.0.0"]]
+                 [org.xerial/sqlite-jdbc "3.43.0.0"]
+                 [honeysql "1.0.461"]]
   :main ^:skip-aot spicy-github.core
   :target-path "target/%s"
   :plugins [[lein-ring "0.12.6"]]
