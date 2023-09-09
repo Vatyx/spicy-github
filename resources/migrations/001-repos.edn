@@ -1,0 +1,9 @@
+{:up
+ [[:table/create {:table :repos :primary-key :uuid}
+   [:column/add
+    [:url {:unique true} :string]
+    [:huh :string]
+    [:processed {:default false} :boolean]
+    [:gungnir/timestamps]]]]
+ :down
+ [[:table/drop :repos]]}

@@ -1,4 +1,19 @@
 (ns spicy-github.db
-  (:gen-class))
+  (:gen-class)
+  (:require [gungnir.database]
+            [gungnir.migration]))
 
-; TODO check out https://github.com/ogrim/clojure-sqlite-example/blob/master/src/clojure_sqlite_example/core.clj for reference
+(def db-config
+  {:adapter "postgresql"
+   :database-name "spicy-github"
+   :server-name "localhost"
+   :username "postgres"
+   :password ""})
+
+(defn initialize-db []
+    (let [migrations (gungnir.migration/load-resources "migrations")]
+        (gungnir.database/make-datasource! db-config)
+        (gungnir.migration/rollback! migrations)
+        (gungnir.migration/migrate! migrations)))
+
+(initialize-db)
