@@ -9,10 +9,12 @@
                  [cheshire "5.11.0"]
                  [ring "1.10.0"]
                  [ring/ring-defaults "0.3.4"]
+                 [metosin/malli "0.12.0"]
                  [compojure "1.7.0"]
                  [com.github.seancorfield/next.jdbc "1.3.883"]
                  [postgresql "9.3-1102.jdbc41"]
                  [kwrooijen/gungnir "0.0.2-SNAPSHOT"]
+                 [defun "0.3.1"]
                  [honeysql "1.0.461"]]
   :main ^:skip-aot spicy-github.core
   :target-path "target/%s"

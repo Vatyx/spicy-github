@@ -1,9 +1,8 @@
 {:up
- [[:table/create {:table :repos :primary-key :uuid}
+ [[:table/create {:table :repository :primary-key :uuid}
    [:column/add
     [:url {:unique true} :string]
-    [:huh :string]
     [:processed {:default false} :boolean]
     [:gungnir/timestamps]]]]
  :down
- [[:table/drop :repos]]}
+ [[:table/drop :repository]]}

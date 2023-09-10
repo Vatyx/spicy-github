@@ -1,11 +1,22 @@
 (ns spicy-github.github-scrapper
-  (:require [clj-github.httpkit-client :as github-client]
-            [clj-http.client :as client]
-            [cheshire.core :refer :all])
-  (:gen-class))
+  (:gen-class)
+  (:require [spicy-github.db :as db]
+            [spicy-github.model :as model]
+            [malli.dev.pretty]
+            [gungnir.model]
+            [defun.core :refer [defun]]
+            [gungnir.query :as q]
+            [gungnir.changeset :as changeset]))
 
 (defn get-and-parse [url]
   (parse-string (:body (client/get url))))
+
+(db/initialize-db!)
+(model/register-models!)
+
+(defun)
+
+(q/save! (changeset/create {:repository/url "what" :repository/processed true}))
 
 (comment
   (require '[clj-github.httpkit-client :as github-client])
@@ -35,5 +46,21 @@
 
   (get-and-parse "https://api.github.com/repos/ziglang/zig/issues/17065/reactions")
 
-  specific-issues
+  (db/initialize-db!)
+
+  (-> {"url" "test" "processed" false}
+      (gungnir.changeset/cast :repository)
+      (gungnir.changeset/create)
+      (q/save!))
+
+  (def huh (random-uuid))
+  (changeset/create {:repository/url "test"})
+
+  (q/save! (changeset/create {:repository/url "test" :repository/processed false}))
+
+  (try
+
+     (catch Exception e
+       (malli.dev.pretty/explain model/repository-model e)
+       ))
 )
