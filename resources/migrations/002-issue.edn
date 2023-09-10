@@ -1,5 +1,5 @@
 {:up
- [[:table/create {:table :issues :primary-key :uuid}
+ [[:table/create {:table :issue :primary-key :uuid}
    [:column/add
     [:url {:unique true} :string]
     [:title :string]
@@ -10,4 +10,4 @@
     [:github-json-payload :string]
     [:gungnir/timestamps]]]]
  :down
- [[:table/drop :issues]]}
+ [[:table/drop :issue]]}
