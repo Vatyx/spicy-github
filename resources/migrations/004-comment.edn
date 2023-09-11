@@ -1,0 +1,12 @@
+{:up
+ [[:table/create {:table :comment :primary-key :uuid}
+   [:column/add
+    [:url {:unique true} :string]
+    [:parent-comment {:references :comment/id :optional true} :uuid]
+    [:user-id {:references :github-user/id} :uuid]
+    [:body :string]
+    [:comment-creation-time :timestamp]
+    [:github-json-payload :string]
+    [:gungnir/timestamps]]]]
+ :down
+ [[:table/drop :comment]]}
