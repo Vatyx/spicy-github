@@ -2,8 +2,8 @@
  [[:table/create {:table :comment :primary-key :uuid}
    [:column/add
     [:url {:unique true} :string]
-    [:parent-comment {:foreign-key :comment/id} :uuid]
-    [:user-id {:foreign-key :user/id} :uuid]
+    [:parent-comment :uuid]
+    [:user-id :uuid]
     [:body :string]
     [:comment-creation-time :timestamp]
     [:github-json-payload :string]

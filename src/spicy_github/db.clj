@@ -19,3 +19,5 @@
 (comment
     (gungnir.migration/rollback! migrations)
     )
+
+(initialize-db!)
