@@ -7,7 +7,6 @@
     [:total-reactions :int]
     [:issue-creation-date :timestamp]
     [:comment-count :int]
-    [:root-comment :uuid]
     [:github-json-payload :string]
     [:gungnir/timestamps]]]]
  :down
