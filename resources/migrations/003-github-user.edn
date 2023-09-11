@@ -3,7 +3,7 @@
    [:column/add
     [:url {:unique true} :string]
     [:user-id :string]
-    [:avatar-url :string]
+    [:avatar-url {:optional true} :string]
     [:gungnir/timestamps]]]]
  :down
  [[:table/drop :github-user]]}
