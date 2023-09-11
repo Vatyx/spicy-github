@@ -1,0 +1,9 @@
+{:up
+ [[:table/create {:table :github-user :primary-key :uuid}
+   [:column/add
+    [:url {:unique true} :string]
+    [:user-id :string]
+    [:avatar-url :string]
+    [:gungnir/timestamps]]]]
+ :down
+ [[:table/drop :github-user]]}
