@@ -23,4 +23,7 @@
   :profiles {:uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
              :dev {:dependencies [[javax.servlet/servlet-api "2.5"]
-                                  [ring/ring-mock "0.3.2"]]}})
+                                  [ring/ring-mock "0.3.2"]]}}
+  :aliases {
+            "initialize-db" ["run" "-m" "spicy-github.db/initialize-db!"]
+            })
