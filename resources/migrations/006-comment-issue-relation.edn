@@ -1,0 +1,8 @@
+{:up
+ [[:table/alter {:table :comment}
+   [:column/add
+    [:issue {:references :issue/id} :uuid]]]]
+ :down
+ [[:table/alter {:table :comment}
+   [:column/drop :issue]]]
+ }
