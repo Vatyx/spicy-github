@@ -18,8 +18,7 @@
    [:user/user-id string?]
    [:user/avatar-url string?]
    [:user/created-at {:auto true} inst?]
-   [:user/updated-at {:auto true} inst?]
-   ])
+   [:user/updated-at {:auto true} inst?]])
 
 (def comment-model
   [:map
@@ -30,13 +29,13 @@
    [:comment/body string?]
    [:comment/comment-creation-time inst?]
    [:comment/github-json-payload string?]
-   [:comment/issue uuid?]
+   [:comment/issue-id uuid?]
    [:comment/created-at {:auto true} inst?]
    [:comment/updated-at {:auto true} inst?]])
 
 (def issue-model
     [:map
-     {:has-many {:issue/comments {:model :comment :foreign-key :comment/issue}}}
+     {:has-many {:issue/comments {:model :comment :foreign-key :comment/issue-id}}}
      [:issue/id {:primary-key true} uuid?]
      [:issue/url string?]
      [:issue/title string?]
