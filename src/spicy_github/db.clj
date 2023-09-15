@@ -19,6 +19,3 @@
 (comment
     (gungnir.migration/rollback! migrations)
     )
-
-
-

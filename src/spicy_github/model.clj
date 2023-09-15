@@ -27,6 +27,7 @@
    [:comment/id {:primary-key true} uuid?]
    [:comment/url string?]
    [:comment/body string?]
+   [:comment/comment-id string?]
    [:comment/comment-creation-time inst?]
    [:comment/github-json-payload string?]
    [:comment/issue-id uuid?]

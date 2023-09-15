@@ -1,0 +1,5 @@
+{:up
+ ["ALTER TABLE github_user ADD UNIQUE(user_id);"]
+:down
+ ["ALTER TABLE github_user DROP INDEX UC_user_id;"]
+ }
