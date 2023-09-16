@@ -26,5 +26,7 @@
              :dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring/ring-mock "0.3.2"]]}}
   :aliases {
-            "initialize-db" ["run" "-m" "spicy-github.db/initialize-db!"]
+            "db-initialize" ["run" "-m" "spicy-github.db/initialize-db!"]
+            "db-migrate" ["run" "-m" "spicy-github.db/migrate-db!"]
+            "db-rollback" ["run" "-m" "spicy-github.db/rollback-db!"]
             })

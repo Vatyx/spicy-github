@@ -11,6 +11,18 @@ To start the application server in headless mode, run the following command. It 
 
     $ lein ring server-headless
 
+To initialize the db
+    
+    $ lein db-initialize
+
+To roll-forward the db
+
+    $ lein db-migrate
+
+To roll-back the db
+
+    $ lein db-rollback
+
 ## Usage
 
 FIXME: explanation

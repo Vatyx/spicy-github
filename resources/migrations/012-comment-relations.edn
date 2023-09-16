@@ -1,0 +1,11 @@
+{:up ["
+  ALTER TABLE comment ADD COLUMN parent_comment text;
+  ALTER TABLE comment ADD CONSTRAINT fk_comment_comment FOREIGN KEY (parent_comment) REFERENCES comment (id);
+  ALTER TABLE comment ADD column issue_id text;
+  ALTER TABLE comment ADD CONSTRAINT fk_comment_issue FOREIGN KEY (issue_id) REFERENCES issue (id);
+"]
+ :down ["
+  ALTER TABLE comment DROP COLUMN parent_comment CASCADE;
+  ALTER TABLE comment DROP COLUMN issue_id CASCADE;
+"]
+ }

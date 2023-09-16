@@ -11,41 +11,42 @@
 
 ; https://stackoverflow.com/questions/15660066/how-to-read-json-file-into-clojure-defrecord-to-be-searched-later
 (defn cast-comment [comment]
-  (changeset/cast model/comment-model (assoc (update-in comment [:id] str) :user_id :id)))
-
-(defn cast-user [comment]
-  (changeset/cast
-    model/user-model
-    (->
-      comment
-      (get "user")
-      (assoc "id" (:id str))
-      (assoc :user-id "id")
-      )))
-
-(defn explain-comment [comment]
-  ; TODO
-  (malli/explain model/comment-model (assoc (assoc comment "user-id" (str (get (get comment "user") "id"))) "github-json-payload" json/write-str)))
-
-(defn explain-user [comment]
   (let [user (get comment "user")]
-    (malli/explain model/user-model (assoc user "user-id"
-                                                (str (get user "id"))))
-    ))
+    (changeset/cast
+      (assoc user "user-id" (str (get user "id")))
+      :user)))
+
+(defn cast-comment [comment]
+  (changeset/cast
+    (-> comment
+        (assoc "user-id" (str (get-in comment ["user" "id"]))
+               "github-json-payload" (json/write-str comment)
+               "comment-creation-time" (get comment "created_at"))
+        (dissoc "id" "user"))
+    :comment))
+
+(defn print-comment [comment]
+  (-> comment
+      (assoc "user-id" (str (get-in comment ["user" "id"]))
+                     "github-json-payload" (json/write-str comment)
+                     "comment-creation-time" (get comment "created_at"))
+      (dissoc "id" "user")
+      json/write-str
+      println))
 
 (defn print-user [comment]
-  (->
-    comment
-    (get "user")
-    (assoc "id" "id" str)
-    (assoc "user-id" "id")
-    println))
-
-(defn print-user-2 [comment]
   (let [user (get comment "user")]
-    (malli/explain model/user-model (assoc user "user-id"
-                (str (get user "id"))))
-    ))
+    (->
+      (assoc user "user-id" (str (get user "id")))
+      (dissoc "id")
+      json/write-str
+      println)))
+
+(defn create-or-update [comment cast]
+  (-> comment cast gungnir.changeset/create gungnir.query/save! println))
+
+(defn create-or-update-user [comment] (create-or-update comment cast-user))
+(defn create-or-update-comment [comment] (create-or-update comment cast-comment))
 
 (defn seed-db []
-  (run! (juxt explain-user explain-comment) (parse-json "test/test_data/comments-16270.json")))
+  (run! (juxt print-user) (take 1 (parse-json "test/test_data/comments-16270.json"))))

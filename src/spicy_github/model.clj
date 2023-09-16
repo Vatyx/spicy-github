@@ -14,8 +14,7 @@
   [:map
    {:table :github-user
     :has-many {:user/comments {:model :comment :foreign-key :comment/user-id}}}
-   [:user/id {:primary-key true} uuid?]
-   [:user/user-id string?]
+   [:user/id {:primary-key true} string?]
    [:user/avatar-url string?]
    [:user/created-at {:auto true} inst?]
    [:user/updated-at {:auto true} inst?]])
@@ -24,7 +23,7 @@
   [:map
    {:has-one {:comment/parent {:model :comment :foreign-key :comment/parent-comment}}
     :belongs-to {:comment/user {:model :user :foreign-key :comment/user-id}}}
-   [:comment/id {:primary-key true} uuid?]
+   [:comment/id {:primary-key true} string?]
    [:comment/url string?]
    [:comment/body string?]
    [:comment/comment-id string?]
