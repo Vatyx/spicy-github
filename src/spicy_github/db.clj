@@ -10,12 +10,20 @@
    :username "postgres"
    :password ""})
 
+(defn register-db! [] (gungnir.database/make-datasource! db-config))
+
+(defn load-resources [] (gungnir.migration/load-resources "migrations"))
+
 (defn initialize-db! []
-    (let [migrations (gungnir.migration/load-resources "migrations")]
-        (gungnir.database/make-datasource! db-config)
+    (let [migrations (load-resources)]
+        (register-db!)
         (gungnir.migration/rollback! migrations)
         (gungnir.migration/migrate! migrations)))
 
-(comment
-    (gungnir.migration/rollback! migrations)
-    )
+(defn migrate-db! []
+  (register-db!)
+  (gungnir.migration/migrate! (load-resources)))
+
+(defn rollback-db! []
+  (register-db!)
+  (gungnir.migration/rollback! (load-resources)))

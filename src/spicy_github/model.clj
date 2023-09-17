@@ -14,30 +14,32 @@
   [:map
    {:table :github-user
     :has-many {:user/comments {:model :comment :foreign-key :comment/user-id}}}
-   [:user/id {:primary-key true} uuid?]
-   [:user/user-id string?]
+   [:user/id {:primary-key true} string?]
    [:user/avatar-url string?]
+   [:user/url string?]
    [:user/created-at {:auto true} inst?]
    [:user/updated-at {:auto true} inst?]])
 
 (def comment-model
   [:map
    {:has-one {:comment/parent {:model :comment :foreign-key :comment/parent-comment}}
-    :belongs-to {:comment/user {:model :user :foreign-key :comment/user-id}}}
-   [:comment/id {:primary-key true} uuid?]
+    :belongs-to {
+                 :comment/user {:model :user :foreign-key :comment/user-id}
+                 :comment/issue {:model :issue :foreign-key :comment/issue-id}
+                 }}
+   [:comment/id {:primary-key true} string?]
    [:comment/url string?]
    [:comment/body string?]
-   [:comment/comment-id string?]
    [:comment/comment-creation-time inst?]
+   [:comment/comment-updated-time inst?]
    [:comment/github-json-payload string?]
-   [:comment/issue-id uuid?]
    [:comment/created-at {:auto true} inst?]
    [:comment/updated-at {:auto true} inst?]])
 
 (def issue-model
     [:map
      {:has-many {:issue/comments {:model :comment :foreign-key :comment/issue-id}}}
-     [:issue/id {:primary-key true} uuid?]
+     [:issue/id {:primary-key true} string?]
      [:issue/url string?]
      [:issue/title string?]
      [:issue/body string?]

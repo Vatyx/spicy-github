@@ -14,8 +14,6 @@
 (db/initialize-db!)
 (model/register-models!)
 
-(defun)
-
 (q/save! (changeset/create {:repository/url "what" :repository/processed true}))
 
 (comment

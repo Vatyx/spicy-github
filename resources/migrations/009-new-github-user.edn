@@ -1,0 +1,14 @@
+{:up ["
+  ALTER TABLE github_user DROP CONSTRAINT github_user_pkey CASCADE;
+  ALTER TABLE github_user DROP COLUMN id CASCADE;
+  ALTER TABLE github_user RENAME COLUMN user_id TO id;
+  ALTER TABLE github_user ADD PRIMARY KEY (id);
+  "]
+ :down ["
+  ALTER TABLE github_user DROP CONSTRAINT github_user_pkey CASCADE;
+  ALTER TABLE github_user DROP COLUMN id CASCADE;
+  ALTER TABLE github_user ADD COLUMN id uuid;
+  ALTER TABLE github_user ADD PRIMARY KEY (id);
+  ALTER TABLE github_user RENAME COLUMN user_id TO id;
+ "]
+ }
