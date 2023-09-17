@@ -1,7 +1,6 @@
 (ns spicy-github.db-test
   (:require [clojure.test :refer :all]
             [clojure.data.json :as json]
-            [gungnir.query :as query]
             [gungnir.changeset :as changeset]))
 
 (defn persist!
@@ -40,17 +39,11 @@
 (defn cast-comment [comment]
   (changeset/cast (parse-comment comment) :comment))
 
-(defn print-comment [comment]
-  (-> comment parse-comment (changeset/cast :comment) changeset/create println))
+(defn create-or-update-comment! [comment]
+  (-> comment parse-comment (changeset/cast :comment) changeset/create persist!))
 
-(defn print-user [comment]
+(defn create-or-update-user! [comment]
   (-> comment parse-user-from-comment (changeset/cast :user) changeset/create persist!))
 
-(defn create-or-update! [comment cast]
-  (-> comment cast changeset/create query/save!))
-
-(defn create-or-update-user! [comment] (create-or-update! comment cast-user))
-(defn create-or-update-comment! [comment] (create-or-update! comment cast-comment))
-
 (defn seed-db! []
-  (run! (juxt print-user) (take 1 (parse-json "test/test_data/comments-16270.json"))))
+  (run! (juxt create-or-update-user! create-or-update-comment!) (parse-json "test/test_data/comments-16270.json")))

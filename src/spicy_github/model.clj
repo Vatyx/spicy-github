@@ -30,7 +30,6 @@
    [:comment/id {:primary-key true} string?]
    [:comment/url string?]
    [:comment/body string?]
-   [:comment/comment-id string?]
    [:comment/comment-creation-time inst?]
    [:comment/comment-updated-time inst?]
    [:comment/github-json-payload string?]
