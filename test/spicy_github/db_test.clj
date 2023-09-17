@@ -7,11 +7,9 @@
 (defn persist!
   "Hack because I don't know how to decompose this yet. Modified version of "
   ([changeset]
-   (gungnir.query/save! changeset gungnir.database/*datasource*))
-  ([{:changeset/keys [result] :as changeset} datasource]
-   (let [initial-results (if (some? (gungnir.record/primary-key-value result))
-                           (gungnir.database/insert! changeset datasource)
-                           (gungnir.database/insert! changeset datasource))]
+   (persist! changeset gungnir.database/*datasource*))
+  ([{:changeset/keys [_] :as changeset} datasource]
+   (let [initial-results (gungnir.database/insert! changeset datasource)]
      (if (nil? (get initial-results :changeset/errors))
        initial-results
        (-> initial-results
