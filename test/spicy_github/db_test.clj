@@ -30,12 +30,15 @@
 (defn parse-json [path]
   (json/read-str (slurp path)))
 
-(defn parse-comment [comment]
-  (assoc comment "id" (str (get comment "id"))
-                 "github-json-payload" (json/write-str comment)
-                 "comment-creation-time" (get comment "created_at")
-                 "comment-updated-time" (get comment "updated_at")
-                 "user-id" (str (get-in comment ["user" "id"]))))
+(defn parse-comment [comment-and-parent]
+  (let [comment (comment-and-parent 0)
+        parent (comment-and-parent 1)]
+    (let [updated-comment (assoc comment "id" (str (get comment "id"))
+                   "github-json-payload" (json/write-str comment)
+                   "comment-creation-time" (get comment "created_at")
+                   "comment-updated-time" (get comment "updated_at")
+                   "user-id" (str (get-in comment ["user" "id"])))]
+      (if (nil? parent) updated-comment  (assoc updated-comment "parent-comment" (str (get parent "id")))))))
 
 (defn parse-user-from-comment [comment]
   (let [user (get comment "user")]
@@ -43,8 +46,8 @@
                 "url" (get user "html_url")
                 "avatar-url" (get user "avatar_url"))))
 
-(defn create-or-update-comment! [comment]
-  (-> comment
+(defn create-or-update-comment! [comment-and-parent]
+  (-> comment-and-parent
       parse-comment
       (changeset/cast :comment)
       changeset/create
@@ -70,7 +73,9 @@
             (get rhs :user/avatar-url))))))
 
 (defn seed-db! []
-  (run! (juxt create-or-update-user! create-or-update-comment!) (parse-json "test/test_data/comments-16270.json")))
+  (let [comments (parse-json "test/test_data/comments-16270.json")]
+    (run! create-or-update-user! comments)
+    (run! create-or-update-comment! (map vector comments (drop-last (conj (seq comments) nil))))))
 
 (defn setup-test-env! []
   (spicy-github.db/register-db!)

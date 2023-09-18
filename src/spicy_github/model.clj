@@ -11,7 +11,7 @@
      [:repository/url string?]
      [:repository/processed boolean?]
      [:repository/created-at {:auto true} inst?]
-     [:repository/updated-at {:before-save [:get-current-time]} inst?]])
+     [:repository/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
 (def user-model
   [:map
@@ -21,8 +21,7 @@
    [:user/avatar-url string?]
    [:user/url string?]
    [:user/created-at {:auto true} inst?]
-   [:user/updated-at {:before-save [:get-current-time]} inst?]])
-
+   [:user/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
 (def comment-model
   [:map
@@ -32,13 +31,16 @@
                  :comment/issue {:model :issue :foreign-key :comment/issue-id}
                  }}
    [:comment/id {:primary-key true} string?]
+   [:comment/parent-comment {:optional true} string?]
    [:comment/url string?]
    [:comment/body string?]
    [:comment/comment-creation-time inst?]
+   [:comment/issue-id {:optional true} string?]
+   [:comment/user-id {:optional true} string?]
    [:comment/comment-updated-time inst?]
    [:comment/github-json-payload string?]
    [:comment/created-at {:auto true} inst?]
-   [:comment/updated-at {:before-save [:get-current-time]} inst?]])
+   [:comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
 (def issue-model
     [:map
@@ -52,7 +54,7 @@
      [:issue/issue-creation-date inst?]
      [:issue/github-json-payload string?]
      [:issue/created-at {:auto true} inst?]
-     [:issue/updated-at {:before-save [:get-current-time]} inst?]])
+     [:issue/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
 (defn register-models! []
     (gungnir.model/register! {:repository repository-model
