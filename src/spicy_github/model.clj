@@ -44,14 +44,17 @@
 
 (def issue-model
     [:map
-     {:has-many {:issue/comments {:model :comment :foreign-key :comment/issue-id}}}
+     {:has-many {:issue/comments {:model :comment :foreign-key :comment/issue-id}}
+      :has-one {:issue/root {:model :comment :foreign-key :issue/root-comment}}}
      [:issue/id {:primary-key true} string?]
      [:issue/url string?]
      [:issue/title string?]
      [:issue/body string?]
      [:issue/total-reactions int?]
      [:issue/comment-count int?]
+     [:issue/root-comment {:optional true} string?]
      [:issue/issue-creation-date inst?]
+     [:issue/issue-updated-time {:optional true} inst?]
      [:issue/github-json-payload string?]
      [:issue/created-at {:auto true} inst?]
      [:issue/updated-at {:before-save [:get-current-time] :optional true} inst?]])

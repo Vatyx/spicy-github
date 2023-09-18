@@ -1,0 +1,8 @@
+{:up
+ [[:table/alter {:table :issue}
+   [:column/add
+    [:issue-updated-time :timestamp]]]]
+ :down
+ [[:table/alter {:table :issue}
+   [:column/drop :issue-updated-time]]]
+ }
