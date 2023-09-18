@@ -1,6 +1,9 @@
 (ns spicy-github.model
   (:gen-class)
-    (:require [gungnir.model]))
+  (:require [gungnir.model])
+  (:import (java.time Instant)))
+
+(defmethod gungnir.model/before-save :get-current-time [_k _v] (Instant/now))
 
 (def repository-model
     [:map
@@ -8,7 +11,7 @@
      [:repository/url string?]
      [:repository/processed boolean?]
      [:repository/created-at {:auto true} inst?]
-     [:repository/updated-at {:auto true} inst?]])
+     [:repository/updated-at {:before-save [:get-current-time]} inst?]])
 
 (def user-model
   [:map
@@ -18,7 +21,8 @@
    [:user/avatar-url string?]
    [:user/url string?]
    [:user/created-at {:auto true} inst?]
-   [:user/updated-at {:auto true} inst?]])
+   [:user/updated-at {:before-save [:get-current-time]} inst?]])
+
 
 (def comment-model
   [:map
@@ -34,7 +38,7 @@
    [:comment/comment-updated-time inst?]
    [:comment/github-json-payload string?]
    [:comment/created-at {:auto true} inst?]
-   [:comment/updated-at {:auto true} inst?]])
+   [:comment/updated-at {:before-save [:get-current-time]} inst?]])
 
 (def issue-model
     [:map
@@ -48,7 +52,7 @@
      [:issue/issue-creation-date inst?]
      [:issue/github-json-payload string?]
      [:issue/created-at {:auto true} inst?]
-     [:issue/updated-at {:auto true} inst?]])
+     [:issue/updated-at {:before-save [:get-current-time]} inst?]])
 
 (defn register-models! []
     (gungnir.model/register! {:repository repository-model
