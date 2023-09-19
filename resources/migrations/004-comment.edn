@@ -1,11 +1,14 @@
 {:up
- [[:table/create {:table :comment :primary-key :uuid}
+ [[:table/create {:table :comment}
    [:column/add
+    [:id {:primary-key true} :string]
     [:url {:unique true} :string]
-    [:parent-comment {:references :comment/id :optional true} :uuid]
-    [:user-id {:references :github-user/id} :uuid]
+    [:parent-comment {:references :comment/id :optional true} :string]
     [:body :string]
-    [:comment-creation-time :timestamp]
+    [:comment-creation-time {:optional true} :timestamp]
+    [:comment-updated-time {:optional true} :timestamp]
+    [:issue-id {:references :issue/id :optional true} :string]
+    [:user-id {:references :github-user/id :optional true} :string]
     [:github-json-payload :string]
     [:gungnir/timestamps]]]]
  :down

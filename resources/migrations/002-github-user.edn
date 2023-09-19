@@ -1,8 +1,8 @@
 {:up
- [[:table/create {:table :github-user :primary-key :uuid}
+ [[:table/create {:table :github-user}
    [:column/add
+    [:id {:primary-key true} :string]
     [:url {:unique true} :string]
-    [:user-id :string]
     [:avatar-url {:optional true} :string]
     [:gungnir/timestamps]]]]
  :down
