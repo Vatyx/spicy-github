@@ -1,8 +1,0 @@
-{:up
- [[:table/alter {:table :issue}
-   [:column/add
-    [:root-comment {:optional true :references :comment/id} :uuid]]]]
-:down
- [[:table/alter {:table :issue}
-   [:column/drop :root-comment]]]
- }

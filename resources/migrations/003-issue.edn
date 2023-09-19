@@ -1,0 +1,17 @@
+{:up
+ [[:table/create {:table :issue}
+   [:column/add
+    [:id {:primary-key true} :string]
+    [:url {:unique true} :string]
+    [:title :string]
+    [:body :string]
+    [:total-reactions :int]
+    [:comment-count :int]
+    [:issue-creation-time :timestamp]
+    [:issue-updated-time {:optional true} :timestamp]
+    [:user-id {:references :github-user/id :optional true} :string]
+    [:repository-id {:references :repository/id :optional true} :string]
+    [:github-json-payload :string]
+    [:gungnir/timestamps]]]]
+ :down
+ [[:table/drop :issue]]}

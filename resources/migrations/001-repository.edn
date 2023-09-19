@@ -1,6 +1,7 @@
 {:up
- [[:table/create {:table :repository :primary-key :uuid}
+ [[:table/create {:table :repository}
    [:column/add
+    [:id {:primary-key true} :string]
     [:url {:unique true} :string]
     [:processed {:default false} :boolean]
     [:gungnir/timestamps]]]]

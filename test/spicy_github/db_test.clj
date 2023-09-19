@@ -4,7 +4,6 @@
             [clojure.test :refer :all]
             [clojure.data.json :as json]
             [gungnir.query :as query]
-            [clojure.instant :as instant]
             [gungnir.changeset :as changeset]))
 
 ; TODO: Fix this, it needs to have a generic query function
@@ -28,16 +27,13 @@
        ))))
 
 (defn parse-json [path]
-  (json/read-str (slurp path)))
-
-(defn parse-timestamp [timestamp]
-  (instant/read-instant-date timestamp))
+  (json/read-str (slurp path) :key-fn keyword))
 
 (defn parse-comment [comment-and-parent]
   (let [comment (comment-and-parent 0)
         parent (comment-and-parent 1)
         issue-id (comment-and-parent 2)]
-    (let [updated-comment (assoc comment "id" (str (get comment "id"))
+    (let [updated-comment (assoc comment "id" (str ("get" comment "id"))
                                          "github-json-payload" (json/write-str comment)
                                          "comment-creation-time" (parse-timestamp (get comment "created_at"))
                                          "comment-updated-time" (parse-timestamp (get comment "updated_at"))
@@ -58,8 +54,8 @@
     (let [updated-issue (assoc issue-json "id" (str (get issue-json "id"))
                                           "total-reactions" (get (get issue-json "reactions") "total_count")
                                           "comment-count" (get issue-json "comments")
-                                          "issue-creation-date" (parse-timestamp (get issue-json "created_at"))
-                                          "issue-updated-time" (parse-timestamp (get issue-json "updated_at"))
+                                          "issue-creation-date" (get issue-json "created_at")
+                                          "issue-updated-time" (get issue-json "updated_at")
                                           "github-json-payload" (json/write-str issue-json))]
       (if
         (nil? comment)
@@ -73,7 +69,6 @@
 (defn create-or-update-comment! [comment-and-parent]
   (-> comment-and-parent
       parse-comment
-      (changeset/cast :comment)
       changeset/create
       (persist!
         (fn [record] (query/find! :comment (get record :comment/id)))
@@ -85,7 +80,6 @@
 
 (defn create-or-update-user! [user]
   (-> user
-      (changeset/cast :user)
       changeset/create
       (persist!
         (fn [record] (query/find! :user (get record :user/id)))
@@ -99,18 +93,17 @@
 (defn create-or-update-issue! [issue comment]
   (-> issue
       (parse-issue comment)
-      (changeset/cast :issue)
       changeset/create
       (persist!
         (fn [record] (query/find! :issue (get record :issue/id)))
         (fn [existing record] (changeset/create existing (changeset/cast record :issue)))
         (fn [lhs rhs]
           (and (=
-                 (inst-ms (get lhs :issue/issue-updated-time))
-                 (inst-ms (get rhs :issue/issue-updated-time)))
+                 (inst-ms (:issue/issue-updated-time lhs))
+                 (inst-ms (:issue/issue-updated-time rhs)))
                (=
-                 (get lhs :issue/root-comment)
-                 (get rhs :issue/root-comment))
+                 (:issue/root-comment lhs)
+                 (:issue/root-comment rhs))
                )))
       ))
 
