@@ -16,6 +16,7 @@
                  [postgresql "9.3-1102.jdbc41"]
                  [kwrooijen/gungnir "0.0.2-SNAPSHOT"]
                  [defun "0.3.1"]
+                 [throttler "1.0.1"]
                  [honeysql "1.0.461"]]
   :main ^:skip-aot spicy-github.core
   :target-path "target/%s"

@@ -16,3 +16,4 @@ pom.xml.asc
 .lsp/
 spicy-github.iml
 projectFilesBackup*
+/resources/token.edn

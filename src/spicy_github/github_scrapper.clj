@@ -3,10 +3,13 @@
   (:require [spicy-github.db :as db]
             [spicy-github.model :as model]
             [malli.dev.pretty]
+            [clj-http.client :as client]
             [gungnir.model]
-            [defun.core :refer [defun]]
             [gungnir.query :as q]
-            [gungnir.changeset :as changeset]))
+            [gungnir.changeset :as changeset]
+            [throttler.core :refer [throttle-fn]]))
+
+(def get-url (throttle-fn client/get 50 :hour))
 
 (defn get-and-parse [url]
   (parse-string (:body (client/get url))))
