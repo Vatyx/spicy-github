@@ -1,4 +1,4 @@
-(ns spicy-github.github-scrapper
+(ns spicy-github.scraper
   (:gen-class)
   (:require [spicy-github.db :as db]
             [spicy-github.model :as model]
@@ -17,6 +17,8 @@
 
 (defn get-repositories []
     (q/all! :repository))
+
+(q/all! :repository)
 
 (comment
 

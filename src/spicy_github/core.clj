@@ -2,7 +2,7 @@
   (:gen-class)
     (:require [ring.adapter.jetty :as jetty]
               [spicy-github.db :as db]
-              [spicy-github.github-scrapper]
+              [spicy-github.scraper]
               [clojure.core.async :as a]
               [spicy-github.api]
               [spicy-github.model :as model]))
@@ -12,5 +12,5 @@
     (db/register-db!)
     (model/register-models!)
 
-    (a/thread spicy-github.github-scrapper/process-repositories)
+    (a/thread spicy-github.scraper/process-repositories)
     (jetty/run-jetty spicy-github.api/app {:port 3000}))
