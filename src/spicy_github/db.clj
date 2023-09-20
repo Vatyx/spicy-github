@@ -27,3 +27,5 @@
 (defn rollback-db! []
   (register-db!)
   (gungnir.migration/rollback! (load-resources)))
+
+(register-db!)

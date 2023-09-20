@@ -65,3 +65,5 @@
                               :issue issue-model
                               :user user-model
                               :comment comment-model}))
+
+(register-models!)

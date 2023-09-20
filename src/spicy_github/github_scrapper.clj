@@ -7,7 +7,18 @@
             [gungnir.model]
             [gungnir.query :as q]
             [gungnir.changeset :as changeset]
-            [throttler.core :refer [throttle-fn]]))
+            )
+    (:use [spicy-github.util]))
+
+(defn process-repositories []
+    (forever
+         (Thread/sleep 1000)
+         (println "hello")))
+
+(defn get-repositories []
+    (q/all! :repository))
+
+(comment
 
 (def get-url (throttle-fn client/get 50 :hour))
 
@@ -64,4 +75,5 @@
      (catch Exception e
        (malli.dev.pretty/explain model/repository-model e)
        ))
+)
 )
