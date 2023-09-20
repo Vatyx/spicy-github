@@ -6,26 +6,6 @@
             [gungnir.query :as query]
             [gungnir.changeset :as changeset]))
 
-; TODO: Fix this, it needs to have a generic query function
-; that does a lookup and merge if records are found by that id
-(defn persist!
-  "Hack because I don't know how to decompose this yet. Modified version of gungnir.query/save!
-   because our records will have primary keys already associated with them from github."
-  ([changeset query-by-id! clean-record equality-check?]
-   (persist! changeset gungnir.database/*datasource* query-by-id! clean-record equality-check?))
-  ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
-   (let [initial-results (gungnir.database/insert! changeset datasource)]
-     (if (nil? (get initial-results :changeset/errors))
-       changeset
-       (let [diff (get changeset :changeset/diff)
-             inputRecord (get changeset :changeset/result)
-             existing (query-by-id! inputRecord)]
-         (if (equality-check? existing inputRecord)
-           existing
-           (gungnir.database/update! (clean-record existing diff) datasource))
-         )
-       ))))
-
 (defn parse-json [path]
   (json/read-str (slurp path) :key-fn keyword))
 

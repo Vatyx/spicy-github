@@ -3,7 +3,8 @@
    [:column/add
     [:id {:primary-key true} :string]
     [:url {:unique true} :string]
-    [:processed {:default false} :boolean]
+    [:processed-at :timestamp]
+    [:github-json-payload :string]
     [:gungnir/timestamps]]]]
  :down
  [[:table/drop :repository]]}

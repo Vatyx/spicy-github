@@ -10,7 +10,8 @@
      {:has-many {:repository/issues {:model :issue :foreign-key :issue/repository-id}}}
      [:repository/id {:primary-key true} string?]
      [:repository/url string?]
-     [:repository/processed boolean?]
+     [:repository/processed-at inst?]
+     [:repository/github-json-payload string?]
      [:repository/created-at {:auto true} inst?]
      [:repository/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
