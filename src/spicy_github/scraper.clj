@@ -89,7 +89,7 @@
         cat                                                 ; Iterate over the comment pagination
         cat                                                 ; Each pagination gives us a list of comments, iterate over them
         (parse-then-persist adapters/parse-user-from-comment) ; Save the user of each comment into the db
-        (parse-then-persist adapters/parse-user-from-comment) ; Save the comment
+        (parse-then-persist adapters/parse-comment)         ; Save the comment
         ))
 
 (defn process-repository-models [repo-models]
