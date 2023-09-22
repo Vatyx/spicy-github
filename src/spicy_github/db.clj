@@ -30,7 +30,7 @@
 (defn rollback-db! []
   (register-db!)
   (gungnir.migration/rollback! (load-resources)))
-
++
 ; TODO: Fix this, it needs to have a generic query function
 ; that does a lookup and merge if records are found by that id
 (defn persist!
@@ -60,5 +60,3 @@
             (fn [record] (q/find! model-key (id-key record)))
             (fn [existing record] (c/create existing (c/cast record model-key)))
             model-equality?)))
-
-(register-db!)
