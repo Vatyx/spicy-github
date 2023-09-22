@@ -14,6 +14,7 @@
               [gungnir.query :as q]
               [clj-time.core :as t]
               [honey.sql.helpers :as h]
+              [net.cgrand.xforms :as x]
               [throttler.core :refer [throttle-fn]]))
 
 (defn get-github-token []
@@ -48,7 +49,7 @@
 (defn get-last-processed-repository []
     (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (t/yesterday)))])
         (h/order-by :repository/processed-at)
-        (h/limit 1)
+        (h/limit 10)
         (q/all! :repository)))
 
 (defn get-issues []
@@ -79,24 +80,25 @@
     (comp
         (map get-issues-url-from-repo-model)
         (map #(add-url-query % {:state "all"}))             ; Without stating "all" we will only get open issues
-        (map paginated-iteration)                           ; Create a paginated iterator over issues
+        (map paginated-iteration)                           ; Create a paginated iterator over all issues in this repo
         cat                                                 ; Iterate over the issues pagination
         cat                                                 ; Each pagination gives us a list of issues, iterate over them
-        (parse-then-persist adapters/parse-user-from-issue) ; Save the user of each issue into the db
-        (parse-then-persist adapters/parse-issue)           ; Save the issue into the db
+        (parse-then-persist adapters/parse-user-from-issue) ; Save the user of each issue
+        (parse-then-persist adapters/parse-issue)           ; Save the issue
         (map :comments_url)
-        (map paginated-iteration)                           ; Create a paginated iterator over all issues in the db
+        (map paginated-iteration)                           ; Create a paginated iterator over all comments in this issue
         cat                                                 ; Iterate over the comment pagination
         cat                                                 ; Each pagination gives us a list of comments, iterate over them
-        (parse-then-persist adapters/parse-user-from-comment) ; Save the user of each comment into the db
-        (parse-then-persist adapters/parse-comment)         ; Save the comment
-        ))
+        (parse-then-persist adapters/parse-user-from-comment) ; Save the user of each comment
+        (parse-then-persist adapters/parse-comment)))       ; Save the comment
 
 (defn process-repository-models [repo-models]
     (transduce repo-pipeline-xf (constantly nil) repo-models))
 
 (comment
     (def repo (get-last-processed-repository))
+
+    (into [] (x/window 2 + -) (range 16))
 
     repo
 
@@ -192,6 +194,8 @@
     (def events-url "https://api.github.com/repos/devlooped/moq/issues/1374/events")
 
     (count (parse-json (:body (get-github-url comments-url))))
+
+    (get-github-url "https://api.github.com/users")
 
     (def comments (get-github-url comments-url))
 

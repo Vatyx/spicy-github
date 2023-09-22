@@ -19,6 +19,7 @@
                  [defun "0.3.1"]
                  [clj-time "0.15.2"]
                  [throttler "1.0.1"]
+                 [net.cgrand/xforms "0.19.5"]
                  [honeysql "1.0.461"]]
   :main ^:skip-aot spicy-github.core
   :target-path "target/%s"
