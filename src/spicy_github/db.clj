@@ -1,17 +1,22 @@
 (ns spicy-github.db
-  (:gen-class)
-    (:require [gungnir.changeset :as c]
+    (:gen-class)
+    (:require [clojure.java.jdbc :as sql]
+              [gungnir.changeset :as c]
               [gungnir.database]
               [gungnir.migration]
+              [gungnir.transaction :as transaction]
               [gungnir.query :as q]
-              [spicy-github.util :refer :all]))
+              [spicy-github.util :refer :all]
+              [honey.sql]
+              [honeysql.core]
+              [honey.sql.helpers :as helpers]))
 
 (def db-config
-  {:adapter "postgresql"
-   :database-name "spicy-github"
-   :server-name "localhost"
-   :username "postgres"
-   :password ""})
+    {:adapter       "postgresql"
+     :database-name "spicy-github"
+     :server-name   "localhost"
+     :username      "postgres"
+     :password      ""})
 
 (defn register-db! [] (gungnir.database/make-datasource! db-config))
 
@@ -24,12 +29,12 @@
         (gungnir.migration/migrate! migrations)))
 
 (defn migrate-db! []
-  (register-db!)
-  (gungnir.migration/migrate! (load-resources)))
+    (register-db!)
+    (gungnir.migration/migrate! (load-resources)))
 
 (defn rollback-db! []
-  (register-db!)
-  (gungnir.migration/rollback! (load-resources)))
+    (register-db!)
+    (gungnir.migration/rollback! (load-resources)))
 +
 ; TODO: Fix this, it needs to have a generic query function
 ; that does a lookup and merge if records are found by that id
@@ -60,3 +65,34 @@
             (fn [record] (q/find! model-key (id-key record)))
             (fn [existing record] (c/create existing (c/cast record model-key)))
             model-equality?)))
+
+(defn get-n-latest!
+    ([table deref-keywords] (get-n-latest! table deref-keywords 5))
+    ([table deref-keywords n] (transaction/execute!
+                                  (fn []
+                                      (let [records (->
+                                                        (helpers/select :*)
+                                                        (helpers/from table)
+                                                        (helpers/order-by [:updated-at :desc])
+                                                        (helpers/limit n)
+                                                        (honey.sql/format)
+                                                        (sql/execute! gungnir.database/*datasource*))]
+                                          (run!
+                                              (fn [record]
+                                                  (run! (fn [deref-keyword] (deref (record deref-keyword))) deref-keywords))
+                                              records)
+                                          records
+                                          )))))
+
+(defn get-n-latest-issues!
+    ([] (get-n-latest! :issue [:issue/comments :issue/user [:issue/comments :comment/user]]))
+    ([n] (get-n-latest! :issue [:issue/comments :issue/user [:issue/comments :comment/user]] n)))
+
+
+(defn get-n-latest-comments!
+    ([] (get-n-latest! :comment [:comment/user]))
+    ([n] (get-n-latest! :comment [:comment/user] n)))
+
+(defn setup-test-env! []
+    (spicy-github.db/register-db!)
+    (spicy-github.model/register-models!))
