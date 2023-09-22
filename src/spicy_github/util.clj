@@ -32,7 +32,8 @@
         (when-first [c colls]
             (lazy-cat c (lazy-concat (rest colls))))))
 
-(defn passthrough [f]
+(defn execute [f]
+    "Executes f on the provided items but does not modify it"
     (fn [xf]
         (fn
             ([] (xf))

@@ -11,6 +11,7 @@
                  [ring "1.10.0"]
                  [ring/ring-defaults "0.3.4"]
                  [metosin/malli "0.12.0"]
+                 [hiccup "2.0.0-RC1"]
                  [compojure "1.7.0"]
                  [com.github.seancorfield/next.jdbc "1.3.883"]
                  [postgresql "9.3-1102.jdbc41"]

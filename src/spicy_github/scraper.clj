@@ -9,6 +9,7 @@
               [clj-http.client :as client]
               [cheshire.core :refer :all]
               [clojure.edn :as edn]
+              [hiccup.util]
               [gungnir.model]
               [gungnir.query :as q]
               [clj-time.core :as t]
@@ -36,42 +37,78 @@
                :initk paginated-url
                :somef :body))
 
+(defn add-url-query [url query]
+    (.toString (hiccup.util/url url query)))
+
+(defn parse-then-persist [parser]
+    (execute #(-> %
+                  parser
+                  db/persist-record!)))
+
 (defn get-last-processed-repository []
     (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (t/yesterday)))])
         (h/order-by :repository/processed-at)
         (h/limit 1)
-        (q/all! :repository)
-        (first)))
+        (q/all! :repository)))
 
-(defn process-repositories []
-    (forever
-        (when-let [repo (get-last-processed-repository)]
-            (println "hello")
-            (println "huh"))
-        (println "hello")))
+(defn get-issues []
+    (q/all! :issue))
 
-(defn process-repository [repo]
-    (let [issues-iteration (-> repo
-                               :repository/github-json-payload
-                               parse-json
-                               :issues_url
-                               sanitize-github-url
-                               paginated-iteration)]
+(defn get-issues-url-from-repo-model [repo]
+    (-> repo
+        :repository/github-json-payload
+        parse-json
+        :issues_url
+        sanitize-github-url))
 
-        (transduce (comp cat
-                         (passthrough #(-> %1
-                                           adapters/parse-user-from-issue
-                                           db/persist-record!))
-                         (map adapters/parse-issue)
-                         (map db/persist-record!))
-                   (constantly nil)
-                   issues-iteration)
+(defn get-comments-url-from-issue [issue]
+    (-> issue
+        :issue/github-json-payload
+        parse-json
+        :comments_url))
+
+(defn persist-repo [repo-url]
+    (-> repo-url
+        get-github-url
+        :body
+        parse-json
+        adapters/parse-repository
+        db/persist-record!))
+
+(def repo-pipeline-xf
+    (comp
+        (map get-issues-url-from-repo-model)
+        (map #(add-url-query % {:state "all"}))             ; Without stating "all" we will only get open issues
+        (map paginated-iteration)                           ; Create a paginated iterator over issues
+        cat                                                 ; Iterate over the issues pagination
+        cat                                                 ; Each pagination gives us a list of issues, iterate over them
+        (parse-then-persist adapters/parse-user-from-issue) ; Save the user of each issue into the db
+        (parse-then-persist adapters/parse-issue)           ; Save the issue into the db
+        (map :comments_url)
+        (map paginated-iteration)                           ; Create a paginated iterator over all issues in the db
+        cat                                                 ; Iterate over the comment pagination
+        cat                                                 ; Each pagination gives us a list of comments, iterate over them
+        (parse-then-persist adapters/parse-user-from-comment) ; Save the user of each comment into the db
+        (parse-then-persist adapters/parse-user-from-comment) ; Save the comment
         ))
+
+(defn process-repository-models [repo-models]
+    (transduce repo-pipeline-xf (constantly nil) repo-models))
 
 (comment
     (def repo (get-last-processed-repository))
 
     repo
+
+    (def new-repo-url "https://api.github.com/repos/cgrand/xforms")
+
+    (persist-repo new-repo-url)
+
+    (process-repository-models repo)
+
+    (add-url-query "https://api.github.com/repos/dakrone/cheshire/issues" {:state "all"})
+
+    (count (process-repository-models repo))
 
     (process-repository repo)
 
@@ -110,6 +147,8 @@
 
     (partial)
 
+    (run!)
+
     (eduction (map inc) [1 2 3])
 
     (eduction (filter even?) (map inc)
@@ -141,5 +180,21 @@
     (when-let [repo (not-empty (get-last-processed-repository))]
         (println repo)
         (println "huh"))
+
+    (def comments-url (-> (get-issues)
+                          first
+                          ))
+
+    comments-url
+
+    (def comments-url "https://api.github.com/repos/devlooped/moq/issues/1374/comments")
+
+    (def events-url "https://api.github.com/repos/devlooped/moq/issues/1374/events")
+
+    (count (parse-json (:body (get-github-url comments-url))))
+
+    (def comments (get-github-url comments-url))
+
+    comments
 
     )

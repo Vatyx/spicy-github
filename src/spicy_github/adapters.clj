@@ -1,6 +1,15 @@
 (ns spicy-github.adapters
     (:gen-class)
-    (:require [cheshire.core :refer :all]))
+    (:require [cheshire.core :refer :all]
+              [honey.sql.helpers :as h]
+              [gungnir.query :as q]))
+
+(defn get-issue-id-for-issue-url [issue-url]
+    (-> (h/where [:= :issue/url issue-url])
+        (h/limit 1)
+        (q/all! :issue)
+        first
+        :issue/id))
 
 (defn parse-repository [r]
     {:repository/id                  (-> r :id str)
@@ -33,115 +42,29 @@
      :issue/github-json-payload (generate-string issue-json)
      })
 
+(defn parse-comment [comment-json]
+    {:comment/id                    (-> comment-json :id str)
+     :comment/url                   (:url comment-json)
+     :comment/body                  (:body comment-json)
+     :comment/comment-creation-time (:created_at comment-json)
+     :comment/comment-updated-time  (:updated_at comment-json)
+     :comment/issue-id              (-> comment-json :issue_url get-issue-id-for-issue-url)
+     :comment/user-id               (-> comment-json :user :id str)
+     :comment/github-json-payload   (generate-string comment-json)
+     })
+
 (defn parse-user-from-comment [comment] (-> comment :user parse-user))
 (defn parse-user-from-issue [issue] (-> issue :user parse-user))
 
 (comment
-    (def test {:html_url                    "https://github.com/dakrone/cheshire",
-               :network_count               148,
-               :description                 "Clojure JSON and JSON SMILE (binary json format) encoding/decoding",
-               :archived                    false,
-               :open_issues_count           50,
-               :watchers                    1460,
-               :ssh_url                     "git@github.com:dakrone/cheshire.git",
-               :hooks_url                   "https://api.github.com/repos/dakrone/cheshire/hooks",
-               :archive_url                 "https://api.github.com/repos/dakrone/cheshire/{archive_format}{/ref}",
-               :has_discussions             false,
-               :keys_url                    "https://api.github.com/repos/dakrone/cheshire/keys{/key_id}",
-               :forks_count                 148,
-               :languages_url               "https://api.github.com/repos/dakrone/cheshire/languages",
-               :git_url                     "git://github.com/dakrone/cheshire.git",
-               :issue_comment_url           "https://api.github.com/repos/dakrone/cheshire/issues/comments{/number}",
-               :git_refs_url                "https://api.github.com/repos/dakrone/cheshire/git/refs{/sha}",
-               :clone_url                   "https://github.com/dakrone/cheshire.git",
-               :contents_url                "https://api.github.com/repos/dakrone/cheshire/contents/{+path}",
-               :has_downloads               true,
-               :teams_url                   "https://api.github.com/repos/dakrone/cheshire/teams",
-               :has_issues                  true,
-               :disabled                    false,
-               :issue_events_url            "https://api.github.com/repos/dakrone/cheshire/issues/events{/number}",
-               :license                     {:key     "mit",
-                                             :name    "MIT License",
-                                             :spdx_id "MIT",
-                                             :url     "https://api.github.com/licenses/mit",
-                                             :node_id "MDc6TGljZW5zZTEz"},
-               :private                     false,
-               :watchers_count              1460,
-               :collaborators_url           "https://api.github.com/repos/dakrone/cheshire/collaborators{/collaborator}",
-               :homepage                    "https://github.com/dakrone/cheshire",
-               :git_commits_url             "https://api.github.com/repos/dakrone/cheshire/git/commits{/sha}",
-               :name                        "cheshire",
-               :temp_clone_token            nil,
-               :releases_url                "https://api.github.com/repos/dakrone/cheshire/releases{/id}",
-               :milestones_url              "https://api.github.com/repos/dakrone/cheshire/milestones{/number}",
-               :svn_url                     "https://github.com/dakrone/cheshire",
-               :node_id                     "MDEwOlJlcG9zaXRvcnkxNTE2NDY3",
-               :merges_url                  "https://api.github.com/repos/dakrone/cheshire/merges",
-               :compare_url                 "https://api.github.com/repos/dakrone/cheshire/compare/{base}...{head}",
-               :web_commit_signoff_required false,
-               :stargazers_count            1460,
-               :tags_url                    "https://api.github.com/repos/dakrone/cheshire/tags",
-               :statuses_url                "https://api.github.com/repos/dakrone/cheshire/statuses/{sha}",
-               :notifications_url           "https://api.github.com/repos/dakrone/cheshire/notifications{?since,all,participating}",
-               :open_issues                 50,
-               :has_wiki                    true,
-               :size                        1033,
-               :assignees_url               "https://api.github.com/repos/dakrone/cheshire/assignees{/user}",
-               :commits_url                 "https://api.github.com/repos/dakrone/cheshire/commits{/sha}",
-               :labels_url                  "https://api.github.com/repos/dakrone/cheshire/labels{/name}",
-               :forks_url                   "https://api.github.com/repos/dakrone/cheshire/forks",
-               :contributors_url            "https://api.github.com/repos/dakrone/cheshire/contributors",
-               :topics                      [],
-               :updated_at                  "2023-09-19T00:34:54Z",
-               :pulls_url                   "https://api.github.com/repos/dakrone/cheshire/pulls{/number}",
-               :subscribers_count           31,
-               :has_pages                   false,
-               :default_branch              "master",
-               :language                    "Clojure",
-               :comments_url                "https://api.github.com/repos/dakrone/cheshire/comments{/number}",
-               :id                          1516467,
-               :stargazers_url              "https://api.github.com/repos/dakrone/cheshire/stargazers",
-               :is_template                 false,
-               :issues_url                  "https://api.github.com/repos/dakrone/cheshire/issues{/number}",
-               :trees_url                   "https://api.github.com/repos/dakrone/cheshire/git/trees{/sha}",
-               :events_url                  "https://api.github.com/repos/dakrone/cheshire/events",
-               :branches_url                "https://api.github.com/repos/dakrone/cheshire/branches{/branch}",
-               :url                         "https://api.github.com/repos/dakrone/cheshire",
-               :downloads_url               "https://api.github.com/repos/dakrone/cheshire/downloads",
-               :forks                       148,
-               :subscribers_url             "https://api.github.com/repos/dakrone/cheshire/subscribers",
-               :full_name                   "dakrone/cheshire",
-               :blobs_url                   "https://api.github.com/repos/dakrone/cheshire/git/blobs{/sha}",
-               :subscription_url            "https://api.github.com/repos/dakrone/cheshire/subscription",
-               :fork                        false,
-               :deployments_url             "https://api.github.com/repos/dakrone/cheshire/deployments",
-               :has_projects                true,
-               :allow_forking               true,
-               :pushed_at                   "2023-09-19T19:23:38Z",
-               :visibility                  "public",
-               :owner                       {:html_url            "https://github.com/dakrone",
-                                             :gravatar_id         "",
-                                             :followers_url       "https://api.github.com/users/dakrone/followers",
-                                             :subscriptions_url   "https://api.github.com/users/dakrone/subscriptions",
-                                             :site_admin          false,
-                                             :following_url       "https://api.github.com/users/dakrone/following{/other_user}",
-                                             :node_id             "MDQ6VXNlcjE5MDYw",
-                                             :type                "User",
-                                             :received_events_url "https://api.github.com/users/dakrone/received_events",
-                                             :login               "dakrone",
-                                             :organizations_url   "https://api.github.com/users/dakrone/orgs",
-                                             :id                  19060,
-                                             :events_url          "https://api.github.com/users/dakrone/events{/privacy}",
-                                             :url                 "https://api.github.com/users/dakrone",
-                                             :repos_url           "https://api.github.com/users/dakrone/repos",
-                                             :starred_url         "https://api.github.com/users/dakrone/starred{/owner}{/repo}",
-                                             :gists_url           "https://api.github.com/users/dakrone/gists{/gist_id}",
-                                             :avatar_url          "https://avatars.githubusercontent.com/u/19060?v=4"},
-               :git_tags_url                "https://api.github.com/repos/dakrone/cheshire/git/tags{/sha}",
-               :created_at                  "2011-03-23T14:11:48Z",
-               :mirror_url                  nil})
 
     (:html_url test)
+
+    (def huh "  {\n    \"url\": \"https://api.github.com/repos/ziglang/zig/issues/comments/1613916070\",\n    \"html_url\": \"https://github.com/ziglang/zig/issues/16270#issuecomment-1613916070\",\n    \"issue_url\": \"https://api.github.com/repos/ziglang/zig/issues/16270\",\n    \"id\": 1613916070,\n    \"node_id\": \"ic_kwdoamarms5gmmem\",\n    \"user\": {\n      \"login\": \"jarred-sumner\",\n      \"id\": 709451,\n      \"node_id\": \"mdq6vxnlcjcwotq1mq==\",\n      \"avatar_url\": \"https://avatars.githubusercontent.com/u/709451?v=4\",\n      \"gravatar_id\": \"\",\n      \"url\": \"https://api.github.com/users/jarred-sumner\",\n      \"html_url\": \"https://github.com/jarred-sumner\",\n      \"followers_url\": \"https://api.github.com/users/jarred-sumner/followers\",\n      \"following_url\": \"https://api.github.com/users/jarred-sumner/following{/other_user}\",\n      \"gists_url\": \"https://api.github.com/users/jarred-sumner/gists{/gist_id}\",\n      \"starred_url\": \"https://api.github.com/users/jarred-sumner/starred{/owner}{/repo}\",\n      \"subscriptions_url\": \"https://api.github.com/users/jarred-sumner/subscriptions\",\n      \"organizations_url\": \"https://api.github.com/users/jarred-sumner/orgs\",\n      \"repos_url\": \"https://api.github.com/users/jarred-sumner/repos\",\n      \"events_url\": \"https://api.github.com/users/jarred-sumner/events{/privacy}\",\n      \"received_events_url\": \"https://api.github.com/users/jarred-sumner/received_events\",\n      \"type\": \"user\",\n      \"site_admin\": false\n    },\n    \"created_at\": \"2023-06-29t23:26:17z\",\n    \"updated_at\": \"2023-06-29t23:26:17z\",\n    \"author_association\": \"contributor\",\n    \"body\": \"> in the near term, the machine code generated by zig will become less competitive. long-term, it may catch up or even surpass llvm and gcc.\\r\\n\\r\\nimo, this is the biggest question. one of the most compelling reasons to use zig is runtime performance of software written in zig. without llvm's optimization passes, what will that look like?  \",\n    \"reactions\": {\n      \"url\": \"https://api.github.com/repos/ziglang/zig/issues/comments/1613916070/reactions\",\n      \"total_count\": 136,\n      \"+1\": 70,\n      \"-1\": 0,\n      \"laugh\": 0,\n      \"hooray\": 0,\n      \"confused\": 0,\n      \"heart\": 57,\n      \"rocket\": 0,\n      \"eyes\": 9\n    },\n    \"performed_via_github_app\": null\n  }\n")
+
+    (parse-comment (spicy-github.util/parse-json huh))
+
+    (get-issue-id-for-issue-url "https://api.github.com/repos/dakrone/cheshire/issues/200")
 
     (parse-repository test)
     (gungnir.changeset/create (parse-repository test))
