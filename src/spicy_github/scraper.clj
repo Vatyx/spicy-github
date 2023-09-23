@@ -2,7 +2,6 @@
     (:gen-class)
     (:require [clojure.java.io :as io]
               [spicy-github.db :as db]
-              [spicy-github.model :as model]
               [spicy-github.util :refer :all]
               [spicy-github.adapters :as adapters]
               [malli.dev.pretty]
