@@ -1,7 +1,6 @@
 (ns spicy-github.db
     (:gen-class)
-    (:require [clojure.java.jdbc :as sql]
-              [gungnir.changeset :as c]
+    (:require [gungnir.changeset :as c]
               [gungnir.database]
               [gungnir.migration]
               [gungnir.transaction :as transaction]
@@ -67,32 +66,30 @@
             model-equality?)))
 
 (defn get-n-latest!
-    ([table deref-keywords] (get-n-latest! table deref-keywords 5))
-    ([table deref-keywords n] (transaction/execute!
-                                  (fn []
-                                      (let [records (->
-                                                        (helpers/select :*)
-                                                        (helpers/from table)
-                                                        (helpers/order-by [:updated-at :desc])
-                                                        (helpers/limit n)
-                                                        (honey.sql/format)
-                                                        (sql/execute! gungnir.database/*datasource*))]
-                                          (run!
-                                              (fn [record]
-                                                  (run! (fn [deref-keyword] (deref (record deref-keyword))) deref-keywords))
-                                              records)
-                                          records
-                                          )))))
+    ([table query-relations!] (get-n-latest! table query-relations! 5))
+    ([table query-relations! n]
+     (transaction/execute!
+         (fn []
+             (map query-relations!
+                  (->
+                      (helpers/order-by [:updated-at :desc])
+                      (helpers/limit n)
+                      (q/all! table)))))))
+
+
+(defn query-comment-relations! [comment]
+    (q/load! comment :comment/user))
+
+(defn query-issue-relations! [issue]
+    (let [mapped-issue (q/load! issue :issue/user :issue/comments)
+          mapped-comments (map query-comment-relations! (:issue/comments mapped-issue))]
+        (assoc mapped-issue :issue/comments mapped-comments)))
 
 (defn get-n-latest-issues!
-    ([] (get-n-latest! :issue [:issue/comments :issue/user [:issue/comments :comment/user]]))
-    ([n] (get-n-latest! :issue [:issue/comments :issue/user [:issue/comments :comment/user]] n)))
+    ([] (get-n-latest! :issue query-issue-relations!))
+    ([n] (get-n-latest! :issue query-issue-relations! n)))
 
 
 (defn get-n-latest-comments!
-    ([] (get-n-latest! :comment [:comment/user]))
-    ([n] (get-n-latest! :comment [:comment/user] n)))
-
-(defn setup-test-env! []
-    (spicy-github.db/register-db!)
-    (spicy-github.model/register-models!))
+    ([] (get-n-latest! :comment query-comment-relations!))
+    ([n] (get-n-latest! :comment query-comment-relations! n)))

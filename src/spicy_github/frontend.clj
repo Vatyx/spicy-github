@@ -12,4 +12,4 @@
     [:div {} (generate-string issues)])
 
 (defn index []
-    (rum/render-html (style-index (database/get-n-latest-issues!)) ))
+    (rum/render-html (style-index (:issue/body (first (database/get-n-latest-issues!)))) ))

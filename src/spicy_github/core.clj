@@ -15,5 +15,5 @@
     (model/register-models!)
     (db/migrate-db!)
     (frontend/frontend-initialize!)
-    (async/thread scraper/process-repositories)
+    ;(async/thread scraper/process)
     (jetty/run-jetty app/app {:port 3000}))

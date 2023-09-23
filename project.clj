@@ -20,7 +20,7 @@
                  [clj-time "0.15.2"]
                  [throttler "1.0.1"]
                  [net.cgrand/xforms "0.19.5"]
-                 [honeysql "1.0.461"]]
+                 [honeysql "1.0.461"]
                  [rum "0.12.11"]
                  [stylefy "3.2.0"]
                  [stylefy/rum "3.0.0"]]
