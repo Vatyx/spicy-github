@@ -32,12 +32,13 @@
       [:style {:id "_stylefy-styles_"}]
       [:style "details summary a {text-decoration: none; color: #5c55fc; font-weight: bold;}"]
       [:style (stylefy/tag "a" {:text-decoration :none
-                                :color :#5cffcc
-                                :font-weight :normal
-                                :font-family "'open_sans'"})]
+                                :color           :#5cffcc
+                                :font-weight     :normal
+                                :font-family     "'open_sans'"})]
       [:style "details summary::marker {display:none;} summary{list-style: none;}"]
       [:script {:type "module" :src "./javascript/md-block.js"}]
-      [:style "p img {max-width: 100%;}"]]
+      [:style (stylefy/tag "p img " {:max-width :100%})]
+      ]
      [:body (stylefy/use-style body-style) body]])
 
 (def comment-style {:border-radius :10px
@@ -63,12 +64,13 @@
                          :text-align :center
                          })
 
-(def issue-style {:border-radius  :20px
-                  :margin-bottom  :20px
-                  :display        :flex :box-sizing
-                  :border-box :background-color
-                  :#ccc :color    :#333
-                  :flex-direction :column})
+(def issue-style {:border-radius    :20px
+                  :margin-bottom    :20px
+                  :display          :flex
+                  :box-sizing       :border-box
+                  :background-color :#ccc
+                  :color            :#333
+                  :flex-direction   :column})
 
 (def issue-body-style {:flex    :9
                        :padding "5px 5px 20px 20px"
@@ -78,16 +80,23 @@
 
 (def issue-user-image-style {:background-color :#fff
                              :border-radius    :50%
-                             :width            :100px :height
-                             :100px :flex      "0 0 100px"
+                             ::stylefy/media [[{:min-width :100px} {:width :50px
+                                                                    :height :50px
+                                                                    :flex "0 0 50px"}]
+                                              [{:min-width :500px} {:width :100px
+                                                                    :height :100px
+                                                                    :flex "0 0 100px"}]]
                              :padding          :10px
                              :margin           :10px})
 
 (def user-image-style {:background-color :#fff
                        :border-radius    :50%
-                       :width            :100px
-                       :height           :100px
-                       :flex             "0 0 100px"
+                       ::stylefy/media [[{:min-width :100px} {:width :50px
+                                                              :height :50px
+                                                              :flex "0 0 50px"}]
+                                        [{:min-width :500px} {:width :100px
+                                                              :height :100px
+                                                              :flex "0 0 100px"}]]
                        :padding          :10px
                        :margin-top       :10px
                        :margin-bottom    :10px})
