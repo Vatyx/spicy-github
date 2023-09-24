@@ -9,11 +9,19 @@
 
 (defn frontend-initialize! [] (stylefy/init))
 
-(defn add-font-face []
-    (stylefy/font-face {:font-family "open_sans"
-                        :src         "url('https://github.com/sorenson/open-sans-woff/raw/master/fonts/Regular/OpenSans-Regular.woff') format('woff')"
+(defn add-font-faces []
+    (stylefy/font-face {:font-family "'open_sans'"
+                        :src         "url('./fonts/OpenSans-Regular.woff2') format('woff2'), url('./fonts/OpenSans-Regular.woff') format('woff'), url('./fonts/OpenSans-Regular.ttf')"
                         :font-weight "normal"
-                        :font-style  "normal"}))
+                        :font-style  "normal"})
+    (stylefy/font-face {:font-family "'open_sans_light'"
+                        :src         "url('./fonts/OpenSans-Light.woff2') format('woff2'), url('./fonts/OpenSans-Light.woff') format('woff'), url('./fonts/OpenSans-Light.ttf')"
+                        :font-weight "normal"
+                        :font-style  "normal"})
+    )
+
+(def body-style {:font-family "'open_sans', 'Courier New'"
+                 })
 
 (defn wrap-body [body]
     [:html
@@ -22,71 +30,78 @@
       [:style {:id "_stylefy-server-styles_"} "_stylefy-server-styles-content_"] ; Generated CSS will be inserted here
       [:style {:id "_stylefy-constant-styles_"}]
       [:style {:id "_stylefy-styles_"}]
-      [:style "a {text-decoration: none; color: #5c55fc; font-weight: bold}"]
-      [:style "details summary::marker {display:none;} summary{list-style: none} details {}"]
-      ; TODO: Copy this script to our codebase so we're not hotlinking
-      [:script {:type "module" :src "https://md-block.verou.me/md-block.js"}]]
-     [:body body]])
+      [:style "details summary a {text-decoration: none; color: #5c55fc; font-weight: bold;}"]
+      [:style (stylefy/tag "a" {:text-decoration :none
+                                :color :#5cffcc
+                                :font-weight :normal
+                                :font-family "'open_sans'"})]
+      [:style "details summary::marker {display:none;} summary{list-style: none;}"]
+      [:script {:type "module" :src "./javascript/md-block.js"}]
+      [:style "p img {max-width: 100%;}"]]
+     [:body (stylefy/use-style body-style) body]])
 
+(def comment-style {:border-radius :10px
+                    :margin        :10px
+                    :color         :#fff
+                    :display       :flex})
 
-(defn comment-style [] {:border-radius :10px
-                        :margin        :10px
-                        :color         :#fff
-                        :display       :flex})
+(def comment-container-style {:font-family      "'open_sans_light', 'open_sans', 'Courier New'"
+                              :display          :flex
+                              :background-color :#333
+                              :color            :#fff
+                              :padding          "5px 15px 5px 15px"
+                              :border-radius    :20px
+                              :margin           :5px
+                              :opacity          :0.8
+                              :cursor           :auto})
 
-(defn comment-container-style [] {:display          :flex
-                                  :background-color :#333
-                                  :color            :#fff
-                                  :padding          "5px 15px 5px 15px"
-                                  :border-radius    :20px
-                                  :margin           :10px
-                                  :opacity          :0.8
-                                  :cursor           :auto})
+(def comment-body-style {:flex    :9
+                         :display :inline
+                         :padding "0px 5px 0px 5px"})
 
-(defn comment-body-style [] {:flex    :9
-                             :display :inline
-                             :padding "5px 20px 5px 20px"})
+(def issue-header-style {
+                         :text-align :center
+                         })
 
-(defn issue-style [] {:border-radius  :20px
-                      :margin-bottom  :20px
-                      :display        :flex :box-sizing
-                      :border-box :background-color
-                      :#ccc :color    :#333
-                      :flex-direction :column})
+(def issue-style {:border-radius  :20px
+                  :margin-bottom  :20px
+                  :display        :flex :box-sizing
+                  :border-box :background-color
+                  :#ccc :color    :#333
+                  :flex-direction :column})
 
-(defn issue-body-style [] {:flex    :9
-                           :padding "5px 5px 20px 20px"
-                           :cursor :pointer})
+(def issue-body-style {:flex    :9
+                       :padding "5px 5px 20px 20px"
+                       :cursor  :pointer})
 
-(defn issue-container-style [] {
-                                :display :flex})
+(def issue-container-style {:display :flex})
 
-(defn issue-user-image-style [] {:background-color :#fff
-                                 :border-radius    :50%
-                                 :width            :100px :height
-                                 :100px :flex      "0 0 100px"
-                                 :padding          :10px
-                                 :margin           :10px})
+(def issue-user-image-style {:background-color :#fff
+                             :border-radius    :50%
+                             :width            :100px :height
+                             :100px :flex      "0 0 100px"
+                             :padding          :10px
+                             :margin           :10px})
 
-(defn user-image-style [] {:background-color :#fff
-                           :border-radius    :50%
-                           :width            :100px
-                           :height           :100px
-                           :flex             "0 0 100px"
-                           :padding          :10px
-                           :margin-top       :10px
-                           :margin-bottom    :10px})
+(def user-image-style {:background-color :#fff
+                       :border-radius    :50%
+                       :width            :100px
+                       :height           :100px
+                       :flex             "0 0 100px"
+                       :padding          :10px
+                       :margin-top       :10px
+                       :margin-bottom    :10px})
 
 (defn get-user-html
     ([user] (get-user-html user user-image-style))
-    ([user style-producer]
-     [:img (merge (stylefy/use-style (style-producer)) {:src (:user/avatar-url user)})]))
+    ([user style]
+     [:img (merge (stylefy/use-style style) {:src (:user/avatar-url user)})]))
 
 (defn get-comment-html [comment]
-    [:div (stylefy/use-style (comment-style))
+    [:div (stylefy/use-style comment-style)
      (-> comment :comment/user get-user-html)
-     [:div (stylefy/use-style (comment-container-style))
-      [:div (stylefy/use-style (comment-body-style))
+     [:div (stylefy/use-style comment-container-style)
+      [:div (stylefy/use-style comment-body-style)
        [:md-block (:comment/body comment)]]]])
 
 (defn get-ordered-comments [comments]
@@ -111,10 +126,11 @@
         ))
 
 (defn get-issue-html [issue]
-    [:div (stylefy/use-style (issue-style))
+    [:div (stylefy/use-style issue-style)
+     [:h1 (stylefy/use-style issue-header-style) (:issue/title issue)]
      [:details
-      [:summary [:div (stylefy/use-style (issue-container-style))
-                 [:md-block (stylefy/use-style (issue-body-style)) (:issue/body issue)]
+      [:summary [:div (stylefy/use-style issue-container-style)
+                 [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]
                  (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
       (vec (conj (seq (->> (:issue/comments issue) get-ordered-comments (map get-comment-html))) :div))
       ]
@@ -126,7 +142,7 @@
 (defn index []
     (stylefy/query-with-styles
         (fn []
-            (add-font-face)
+            (add-font-faces)
             (->
                 (database/get-n-latest-issues!)
                 get-issues-html

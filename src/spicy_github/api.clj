@@ -8,13 +8,13 @@
               [clojure.pprint]))
 
 (defn index-route [request]
-    (clojure.pprint/pprint request)
     {:status  200
      :headers {"Content-Type" "text/html"}
      :body    (frontend/index)})
 
 (defroutes app-routes
            (GET "/" [] index-route)
+           (route/resources "/")
            (route/not-found "Not Found"))
 
 (def app (wrap-reload (wrap-defaults app-routes site-defaults)))
