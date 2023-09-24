@@ -23,7 +23,8 @@
                  [honeysql "1.0.461"]
                  [rum "0.12.11"]
                  [stylefy "3.2.0"]
-                 [stylefy/rum "3.0.0"]]
+                 [stylefy/rum "3.0.0"]
+                 [io.github.nextjournal/markdown "0.5.144"]]
   :main ^:skip-aot spicy-github.core
   :target-path "target/%s"
   :plugins [[lein-ring "0.12.6"]]

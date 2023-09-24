@@ -4,7 +4,8 @@
         [cheshire.core :refer :all]
         [rum.core :as rum]
         [stylefy.core :as stylefy]
-        [spicy-github.db :as database]))
+        [spicy-github.db :as database]
+        [nextjournal.markdown]))
 
 (defn frontend-initialize! [] (stylefy/init))
 
@@ -21,23 +22,24 @@
       [:style {:id "_stylefy-server-styles_"} "_stylefy-server-styles-content_"] ; Generated CSS will be inserted here
       [:style {:id "_stylefy-constant-styles_"}]
       [:style {:id "_stylefy-styles_"}]
-      ; TODO: Copy this script to our codebase so we're not hotlinking
-      [:script {:type "module" :src "https://md-block.verou.me/md-block.js"}]]
+      [:style "a {text-decoration: none; color: #5c55fc; font-weight: bold}"]]
      [:body body]])
 
-(defn comment-style [] {:border-radius :10px :margin :10px :background-color :#333 :color :#fff :display :flex})
+(defn comment-style [] {:border-radius :10px :margin :10px :color :#fff :display :flex})
 
-(defn comment-body-style [] {:flex :9 :display :inline :padding :20px})
+(defn comment-container-style [] {:display :flex :background-color :#333 :color :#fff :padding "5px 15px 5px 15px" :border-radius :20px :margin :10px :opacity :0.8})
+
+(defn comment-body-style [] {:flex :9 :display :inline :padding "5px 20px 5px 20px"})
 
 (defn issue-style [] {:border-radius :20px :margin-bottom :20px :display :flex :box-sizing :border-box :background-color :#ccc :color :#333 :flex-direction :column})
 
-(defn issue-body-style [] {:flex :9 :padding :20px})
+(defn issue-body-style [] {:flex :9 :padding "5px 5px 20px 20px"})
 
 (defn issue-container-style [] {:display :flex})
 
-(defn issue-user-image-style [] {::border-radius :50% :width :100px :height :100px :flex "0 0 100px" :padding :5px})
+(defn issue-user-image-style [] {:background-color :#fff :border-radius :50% :width :100px :height :100px :flex "0 0 100px" :padding :10px :margin :10px})
 
-(defn user-image-style [] {::border-radius :50% :width :100px :height :100px :flex "0 0 100px" :padding :5px})
+(defn user-image-style [] {:background-color :#fff :border-radius :50% :width :100px :height :100px :flex "0 0 100px" :padding :10px :margin-top :10px :margin-bottom :10px})
 
 (defn get-user-html
     ([user] (get-user-html user user-image-style))
@@ -47,7 +49,9 @@
 (defn get-comment-html [comment]
     [:div (stylefy/use-style (comment-style))
      (-> comment :comment/user get-user-html)
-     [:md-block (stylefy/use-style (comment-body-style)) (:comment/body comment)]])
+     [:div (stylefy/use-style (comment-container-style))
+      [:div (merge (stylefy/use-style (comment-body-style)))
+      (-> (:comment/body comment) nextjournal.markdown/->hiccup)]]])
 
 (defn get-ordered-comments [comments]
     (let [ordered-by-date-comments (sort-by :comment/updated-at comments)
@@ -73,7 +77,7 @@
 (defn get-issue-html [issue]
     [:div (stylefy/use-style (issue-style))
      [:div (stylefy/use-style (issue-container-style))
-      [:md-block (stylefy/use-style (issue-body-style)) (:issue/body issue)]
+      [:div (stylefy/use-style (issue-body-style)) (-> (:issue/body issue) nextjournal.markdown/->hiccup)]
       (-> (:issue/user issue) (get-user-html issue-user-image-style))]
      (vec (conj (seq (->> (:issue/comments issue) get-ordered-comments (map get-comment-html))) :div))])
 
