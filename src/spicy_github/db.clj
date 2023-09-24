@@ -81,14 +81,12 @@
     (q/load! comment :comment/user))
 
 (defn query-issue-relations! [issue]
-    (let [mapped-issue (q/load! issue :issue/user :issue/comments)
-          mapped-comments (map query-comment-relations! (:issue/comments mapped-issue))]
-        (assoc mapped-issue :issue/comments mapped-comments)))
+    (let [mapped-issue (q/load! issue :issue/user :issue/comments)]
+        (assoc mapped-issue :issue/comments (map query-comment-relations! (:issue/comments mapped-issue)))))
 
 (defn get-n-latest-issues!
     ([] (get-n-latest! :issue query-issue-relations!))
     ([n] (get-n-latest! :issue query-issue-relations! n)))
-
 
 (defn get-n-latest-comments!
     ([] (get-n-latest! :comment query-comment-relations!))

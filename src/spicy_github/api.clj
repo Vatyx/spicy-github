@@ -3,6 +3,7 @@
     (:require [compojure.core :refer :all]
               [compojure.route :as route]
               [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
+              [ring.middleware.reload :refer [wrap-reload]]
               [spicy-github.frontend :as frontend]
               [clojure.pprint]))
 
@@ -16,4 +17,4 @@
            (GET "/" [] index-route)
            (route/not-found "Not Found"))
 
-(def app (wrap-defaults app-routes site-defaults))
+(def app (wrap-reload (wrap-defaults app-routes site-defaults)))
