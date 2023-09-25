@@ -43,13 +43,13 @@
     ([changeset query-by-id! clean-record equality-check?]
      (persist! changeset gungnir.database/*datasource* query-by-id! clean-record equality-check?))
     ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
-     (let [initial-results (gungnir.database/insert! changeset datasource)]
+     (let [input-record (:changeset/result changeset)
+           initial-results (gungnir.database/insert! changeset datasource)]
          (if (nil? (get initial-results :changeset/errors))
-             changeset
+             input-record
              (let [diff (get changeset :changeset/diff)
-                   inputRecord (get changeset :changeset/result)
-                   existing (query-by-id! inputRecord)]
-                 (if (equality-check? existing inputRecord)
+                   existing (query-by-id! input-record)]
+                 (if (equality-check? existing input-record)
                      existing
                      (gungnir.database/update! (clean-record existing diff) datasource))
                  )

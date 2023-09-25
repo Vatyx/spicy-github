@@ -3,6 +3,7 @@
    [:column/add
     [:id {:primary-key true} :string]
     [:url {:unique true} :string]
+    [:comment-url :string]
     [:title :string]
     [:body :string]
     [:total-reactions :int]
