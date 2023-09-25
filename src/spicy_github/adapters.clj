@@ -2,7 +2,8 @@
     (:gen-class)
     (:require [cheshire.core :refer :all]
               [honey.sql.helpers :as h]
-              [gungnir.query :as q])
+              [gungnir.query :as q]
+              [spicy-github.util :as util])
     (:import (java.sql Date)))
 
 (defn get-issue-id-for-issue-url [issue-url]
@@ -15,7 +16,7 @@
 (defn parse-repository [r]
     {:repository/id                  (-> r :id str)
      :repository/url                 (:url r)
-     :repository/issue-url           (:issue_url r)
+     :repository/issues-url          (-> r :issues_url util/sanitize-github-url)
      :repository/processed-at        (Date. 0)
      :repository/github-json-payload (generate-string r)
      })
@@ -34,9 +35,9 @@
 (defn parse-issue [issue-json]
     {:issue/id                  (-> issue-json :id str)
      :issue/url                 (:url issue-json)
-     :issue/comment-url         (:comment_url issue-json)
+     :issue/comments-url         (-> issue-json :comments_url util/sanitize-github-url)
      :issue/title               (:title issue-json)
-     :issue/body                (:body issue-json)
+     :issue/body                (->> issue-json :body (str ""))
      :issue/total-reactions     (-> issue-json :reactions :total_count int)
      :issue/comment-count       (-> issue-json :comments int)
      :issue/issue-creation-time (:created_at issue-json)

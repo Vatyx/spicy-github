@@ -2,6 +2,7 @@
     (:gen-class)
     (:require [clojure.java.io :as io]
               [spicy-github.db :as db]
+              [spicy-github.model]
               [spicy-github.util :refer :all]
               [spicy-github.adapters :as adapters]
               [malli.dev.pretty]
@@ -56,12 +57,7 @@
 (defn get-issues! []
     (q/all! :issue))
 
-(defn get-issues-url-from-repo-model [repo]
-    (-> repo
-        :repository/issues-url
-        sanitize-github-url))
-
-(defn persist-repo [repo-url]
+(defn persist-repo-from-url! [repo-url]
     (-> repo-url
         get-github-url
         :body
@@ -71,7 +67,7 @@
 
 (def repo-to-issue-pipeline-xf!
     (comp
-        (map get-issues-url-from-repo-model)
+        (map :repository/issues-url)
         (map #(add-url-query % {:state "all"}))             ; Without stating "all" we will only get open issues
         (map paginated-iteration)                           ; Create a paginated iterator over all issues in this repo
         cat                                                 ; Iterate over the issues pagination
@@ -83,7 +79,7 @@
 
 (def issue-to-comments-pipeline-xf!
     (comp
-        (map :issue/comment-url)
+        (map :issue/comments-url)
         (map paginated-iteration)                           ; Create a paginated iterator over all comments in this issue
         cat                                                 ; Iterate over the comment pagination
         cat                                                 ; Each pagination gives us a list of comments, iterate over them
@@ -93,25 +89,26 @@
 
 (defn process-repository-model! [repo-model]
     (run!
-        #(transaction/execute!
-             (fn [] (let [comments (sequence issue-to-comments-pipeline-xf! %1)
-                          paired-comments (map vector comments (drop-last (conj comments nil)))]
-                        (run!
-                            (fn [paired-comment]
-                                (let [comment (paired-comment 0)
-                                      parent (paired-comment 1)
-                                      updated-comment (if (nil? parent)
-                                                          comment
-                                                          (conj comment {:comment/parent-comment (:comment/id parent)}))]
-                                    (db/persist-record! updated-comment)))
-                            paired-comments))))
-        (sequence repo-to-issue-pipeline-xf! repo-model)))
+        (fn [issue]
+            (let [comments (sequence issue-to-comments-pipeline-xf! issue)
+                  paired-comments (map vector comments (drop-last (conj comments nil)))]
+                (transaction/execute!
+                    #(run!
+                         (fn [paired-comment]
+                             (let [comment (paired-comment 0)
+                                   parent (paired-comment 1)
+                                   updated-comment (if (nil? parent)
+                                                       comment
+                                                       (conj comment {:comment/parent-comment (:comment/id parent)}))]
+                                 (db/persist-record! updated-comment)))
+                         paired-comments))))
+        (sequence repo-to-issue-pipeline-xf! [repo-model])))
 
 (defn process-repository-models! [repo-models]
     (run! process-repository-model! repo-models))
 
 (comment
-    (def repo (get-last-processed-repository!))
+    (def repos (get-last-processed-repository!))
 
     (into [] (x/window 2 + -) (range 16))
 
@@ -119,7 +116,7 @@
 
     (def new-repo-url "https://api.github.com/repos/cgrand/xforms")
 
-    (persist-repo new-repo-url)
+    (persist-repo-from-url! new-repo-url)
 
     (process-repository-models repo)
 
