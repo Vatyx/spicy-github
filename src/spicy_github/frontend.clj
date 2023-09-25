@@ -26,16 +26,19 @@
 (defn wrap-body [body]
     [:html
      [:head
-      [:title "Most Recent Spicy Issues"]
+      [:title "Most Recent Spicy GitHub Issues"]
       [:style {:id "_stylefy-server-styles_"} "_stylefy-server-styles-content_"] ; Generated CSS will be inserted here
       [:style {:id "_stylefy-constant-styles_"}]
       [:style {:id "_stylefy-styles_"}]
-      [:style "details summary a {text-decoration: none; color: #5c55fc; font-weight: bold;}"]
+      [:style (stylefy/tag "details summary a" {:text-decoration :none
+                                                :color           :#5c55fc
+                                                :font-weight     :bold})]
       [:style (stylefy/tag "a" {:text-decoration :none
                                 :color           :#5cffcc
                                 :font-weight     :normal
                                 :font-family     "'open_sans'"})]
-      [:style "details summary::marker {display:none;} summary{list-style: none;}"]
+      [:style (stylefy/tag "details summary::marker" {:display :none})]
+      [:style (stylefy/tag "summary" {:list-style :none})]
       [:script {:type "module" :src "./javascript/md-block.js"}]
       [:style (stylefy/tag "p img " {:max-width :100%})]
       ]
@@ -80,26 +83,32 @@
 
 (def issue-user-image-style {:background-color :#fff
                              :border-radius    :50%
-                             ::stylefy/media [[{:min-width :100px} {:width :50px
-                                                                    :height :50px
-                                                                    :flex "0 0 50px"}]
-                                              [{:min-width :500px} {:width :100px
-                                                                    :height :100px
-                                                                    :flex "0 0 100px"}]]
+                             ::stylefy/media   [[{:min-width :100px} {:width  :50px
+                                                                      :height :50px
+                                                                      :flex   "0 0 50px"}]
+                                                [{:min-width :500px} {:width  :100px
+                                                                      :height :100px
+                                                                      :flex   "0 0 100px"}]]
                              :padding          :10px
                              :margin           :10px})
 
 (def user-image-style {:background-color :#fff
                        :border-radius    :50%
-                       ::stylefy/media [[{:min-width :100px} {:width :50px
-                                                              :height :50px
-                                                              :flex "0 0 50px"}]
-                                        [{:min-width :500px} {:width :100px
-                                                              :height :100px
-                                                              :flex "0 0 100px"}]]
+                       ::stylefy/media   [[{:min-width :100px} {:width  :50px
+                                                                :height :50px
+                                                                :flex   "0 0 50px"}]
+                                          [{:min-width :500px} {:width  :100px
+                                                                :height :100px
+                                                                :flex   "0 0 100px"}]]
                        :padding          :10px
                        :margin-top       :10px
                        :margin-bottom    :10px})
+
+(def issue-title-text-style {
+                             :text-decoration :none
+                             :color           :#5c55fc
+                             :font-weight     :bold
+                             })
 
 (defn get-user-html
     ([user] (get-user-html user user-image-style))
@@ -136,17 +145,18 @@
 
 (defn get-issue-html [issue]
     [:div (stylefy/use-style issue-style)
-     [:h1 (stylefy/use-style issue-header-style) (:issue/title issue)]
+     [:h1 (stylefy/use-style issue-header-style)
+      [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/url issue)}) (:issue/title issue)]]
      [:details
       [:summary [:div (stylefy/use-style issue-container-style)
                  [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]
                  (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
-      (vec (conj (seq (->> (:issue/comments issue) get-ordered-comments (map get-comment-html))) :div))
+      (vec (conj (->> (:issue/comments issue) get-ordered-comments (map get-comment-html)) :div))
       ]
      ])
 
 (defn get-issues-html [issues]
-    [:div (vec (conj (seq (map get-issue-html issues)) :div))])
+    [:div (vec (conj (map get-issue-html issues) :div))])
 
 (defn index []
     (stylefy/query-with-styles
