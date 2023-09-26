@@ -31,7 +31,9 @@
 (def github-token (get-github-token))
 
 (defn get-github-url [url]
-    (get-url url {:headers {"Authorization" (str "Bearer " github-token)}}))
+    (if (nil? url)
+        url
+        (get-url url {:headers {"Authorization" (str "Bearer " github-token)}})))
 
 (defn paginated-iteration [paginated-url]
     (iteration #(get-github-url %1)
@@ -90,7 +92,7 @@
 (defn process-repository-model! [repo-model]
     (run!
         (fn [issue]
-            (let [comments (sequence issue-to-comments-pipeline-xf! issue)
+            (let [comments (sequence issue-to-comments-pipeline-xf! [issue])
                   paired-comments (map vector comments (drop-last (conj comments nil)))]
                 (transaction/execute!
                     #(run!
