@@ -30,7 +30,7 @@
 (defn parse-issue [issue-json]
     {:issue/id                  (-> issue-json :id str)
      :issue/url                 (:url issue-json)
-     :issue/comments-url         (-> issue-json :comments_url util/sanitize-github-url)
+     :issue/comments-url        (-> issue-json :comments_url util/sanitize-github-url)
      :issue/title               (:title issue-json)
      :issue/body                (->> issue-json :body (str ""))
      :issue/total-reactions     (-> issue-json :reactions :total_count int)
