@@ -44,7 +44,7 @@
 (defn parse-comment [comment-json]
     {:comment/id                    (-> comment-json :id str)
      :comment/url                   (:url comment-json)
-     :comment/body                  (:body comment-json (str ""))
+     :comment/body                  (->> comment-json :body (str ""))
      :comment/comment-creation-time (:created_at comment-json)
      :comment/comment-updated-time  (:updated_at comment-json)
      :comment/issue-id              (-> comment-json :issue_url get-issue-id-for-issue-url)
