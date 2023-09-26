@@ -2,6 +2,7 @@
     (:gen-class)
     (:require [clojure.java.io :as io]
               [spicy-github.db :as db]
+              [spicy-github.model]
               [spicy-github.util :refer :all]
               [spicy-github.adapters :as adapters]
               [malli.dev.pretty]
@@ -10,11 +11,13 @@
               [clojure.edn :as edn]
               [hiccup.util]
               [gungnir.model]
+              [gungnir.transaction :as transaction]
               [gungnir.query :as q]
               [clj-time.core :as t]
               [honey.sql.helpers :as h]
               [net.cgrand.xforms :as x]
-              [throttler.core :refer [throttle-fn]]))
+              [throttler.core :refer [throttle-fn]])
+    (:import (java.sql Date)))
 
 (defn get-github-token []
     (-> (io/resource "token.edn")
@@ -28,7 +31,9 @@
 (def github-token (get-github-token))
 
 (defn get-github-url [url]
-    (get-url url {:headers {"Authorization" (str "Bearer " github-token)}}))
+    (if (nil? url)
+        url
+        (get-url url {:headers {"Authorization" (str "Bearer " github-token)}})))
 
 (defn paginated-iteration [paginated-url]
     (iteration #(get-github-url %1)
@@ -40,34 +45,21 @@
 (defn add-url-query [url query]
     (.toString (hiccup.util/url url query)))
 
-(defn parse-then-persist [parser]
+(defn parse-then-persist! [parser]
     (execute #(-> %
                   parser
                   db/persist-record!)))
 
-(defn get-last-processed-repository []
-    (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (t/yesterday)))])
+(defn get-last-processed-repository! []
+    (-> (h/where [:< :repository/processed-at (Date. (inst-ms (t/yesterday)))])
         (h/order-by :repository/processed-at)
         (h/limit 10)
         (q/all! :repository)))
 
-(defn get-issues []
+(defn get-issues! []
     (q/all! :issue))
 
-(defn get-issues-url-from-repo-model [repo]
-    (-> repo
-        :repository/github-json-payload
-        parse-json
-        :issues_url
-        sanitize-github-url))
-
-(defn get-comments-url-from-issue [issue]
-    (-> issue
-        :issue/github-json-payload
-        parse-json
-        :comments_url))
-
-(defn persist-repo [repo-url]
+(defn persist-repo-from-url! [repo-url]
     (-> repo-url
         get-github-url
         :body
@@ -75,27 +67,50 @@
         adapters/parse-repository
         db/persist-record!))
 
-(def repo-pipeline-xf
+(def repo-to-issue-pipeline-xf!
     (comp
-        (map get-issues-url-from-repo-model)
+        (map :repository/issues-url)
         (map #(add-url-query % {:state "all"}))             ; Without stating "all" we will only get open issues
         (map paginated-iteration)                           ; Create a paginated iterator over all issues in this repo
         cat                                                 ; Iterate over the issues pagination
         cat                                                 ; Each pagination gives us a list of issues, iterate over them
-        (parse-then-persist adapters/parse-user-from-issue) ; Save the user of each issue
-        (parse-then-persist adapters/parse-issue)           ; Save the issue
-        (map :comments_url)
+        (parse-then-persist! adapters/parse-user-from-issue) ; Save the user of each issue
+        (map adapters/parse-issue)                          ; Transform the issue into our model
+        (parse-then-persist! identity)                      ; Save the issue
+        ))
+
+(def issue-to-comments-pipeline-xf!
+    (comp
+        (map :issue/comments-url)
         (map paginated-iteration)                           ; Create a paginated iterator over all comments in this issue
         cat                                                 ; Iterate over the comment pagination
         cat                                                 ; Each pagination gives us a list of comments, iterate over them
-        (parse-then-persist adapters/parse-user-from-comment) ; Save the user of each comment
-        (parse-then-persist adapters/parse-comment)))       ; Save the comment
+        (parse-then-persist! adapters/parse-user-from-comment) ; Save the user of each comment
+        (map adapters/parse-comment)
+        ))
 
-(defn process-repository-models [repo-models]
-    (transduce repo-pipeline-xf (constantly nil) repo-models))
+(defn process-repository-model! [repo-model]
+    (run!
+        (fn [issue]
+            (let [comments (sequence issue-to-comments-pipeline-xf! [issue])
+                  paired-comments (map vector comments (drop-last (conj comments nil)))]
+                (transaction/execute!
+                    #(run!
+                         (fn [paired-comment]
+                             (let [comment (paired-comment 0)
+                                   parent (paired-comment 1)
+                                   updated-comment (if (nil? parent)
+                                                       comment
+                                                       (conj comment {:comment/parent-comment (:comment/id parent)}))]
+                                 (db/persist-record! updated-comment)))
+                         paired-comments))))
+        (sequence repo-to-issue-pipeline-xf! [repo-model])))
+
+(defn process-repository-models! [repo-models]
+    (run! process-repository-model! repo-models))
 
 (comment
-    (def repo (get-last-processed-repository))
+    (def repos (get-last-processed-repository!))
 
     (into [] (x/window 2 + -) (range 16))
 
@@ -103,7 +118,7 @@
 
     (def new-repo-url "https://api.github.com/repos/cgrand/xforms")
 
-    (persist-repo new-repo-url)
+    (persist-repo-from-url! new-repo-url)
 
     (process-repository-models repo)
 
@@ -178,11 +193,11 @@
 
     (get-github-url issues-url)
 
-    (when-let [repo (not-empty (get-last-processed-repository))]
+    (when-let [repo (not-empty (get-last-processed-repository!))]
         (println repo)
         (println "huh"))
 
-    (def comments-url (-> (get-issues)
+    (def comments-url (-> (get-issues!)
                           first
                           ))
 

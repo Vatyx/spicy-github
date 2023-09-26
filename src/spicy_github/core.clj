@@ -9,11 +9,14 @@
      [spicy-github.frontend :as frontend] 
      [spicy-github.scraper :as scraper]))
 
-(defn -main
-    [& _]
+(defn initialize! []
     (db/register-db!)
     (model/register-models!)
+    (frontend/frontend-initialize!))
+
+(defn -main
+    [& _]
+    (initialize!)
     (db/migrate-db!)
-    (frontend/frontend-initialize!)
     ;(async/thread scraper/process)
     (jetty/run-jetty app/app {:port 3000}))

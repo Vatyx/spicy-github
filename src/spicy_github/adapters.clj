@@ -2,7 +2,9 @@
     (:gen-class)
     (:require [cheshire.core :refer :all]
               [honey.sql.helpers :as h]
-              [gungnir.query :as q]))
+              [gungnir.query :as q]
+              [spicy-github.util :as util])
+    (:import (java.sql Date)))
 
 (defn get-issue-id-for-issue-url [issue-url]
     (-> (h/where [:= :issue/url issue-url])
@@ -14,7 +16,8 @@
 (defn parse-repository [r]
     {:repository/id                  (-> r :id str)
      :repository/url                 (:url r)
-     :repository/processed-at        (java.sql.Date. 0)
+     :repository/issues-url          (-> r :issues_url util/sanitize-github-url)
+     :repository/processed-at        (Date. 0)
      :repository/github-json-payload (generate-string r)
      })
 
@@ -24,16 +27,12 @@
      :user/url        (:url user-json)
      })
 
-(defn parse-user-from [json]
-    (-> json
-        :user
-        parse-user))
-
 (defn parse-issue [issue-json]
     {:issue/id                  (-> issue-json :id str)
      :issue/url                 (:url issue-json)
+     :issue/comments-url        (-> issue-json :comments_url util/sanitize-github-url)
      :issue/title               (:title issue-json)
-     :issue/body                (:body issue-json)
+     :issue/body                (->> issue-json :body (str ""))
      :issue/total-reactions     (-> issue-json :reactions :total_count int)
      :issue/comment-count       (-> issue-json :comments int)
      :issue/issue-creation-time (:created_at issue-json)
@@ -45,7 +44,7 @@
 (defn parse-comment [comment-json]
     {:comment/id                    (-> comment-json :id str)
      :comment/url                   (:url comment-json)
-     :comment/body                  (:body comment-json)
+     :comment/body                  (->> comment-json :body (str ""))
      :comment/comment-creation-time (:created_at comment-json)
      :comment/comment-updated-time  (:updated_at comment-json)
      :comment/issue-id              (-> comment-json :issue_url get-issue-id-for-issue-url)
