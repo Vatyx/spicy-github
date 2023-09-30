@@ -76,6 +76,18 @@
                       (helpers/limit n)
                       (q/all! table)))))))
 
+(defn get-n-latest-after!
+    ([table query-relations! after] (get-n-latest-after! table query-relations! 5 after))
+    ([table query-relations! n after]
+     (transaction/execute!
+         (fn []
+             (map query-relations!
+                  (->
+                      (helpers/order-by [:updated-at :desc])
+                      (helpers/where [:< :updated-at after])
+                      (helpers/limit n)
+                      (q/all! table)))))))
+
 
 (defn query-comment-relations! [comment]
     (q/load! comment :comment/user))
@@ -87,6 +99,10 @@
 (defn get-n-latest-issues!
     ([] (get-n-latest! :issue query-issue-relations!))
     ([n] (get-n-latest! :issue query-issue-relations! n)))
+
+(defn get-n-latest-issues-after!
+    ([after ] (get-n-latest-after! :issue query-issue-relations! after))
+    ([n after] (get-n-latest-after! :issue query-issue-relations! n after)))
 
 (defn get-n-latest-comments!
     ([] (get-n-latest! :comment query-comment-relations!))

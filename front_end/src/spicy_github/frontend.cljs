@@ -1,11 +1,12 @@
 (ns spicy-github.frontend
     (:require
-        [cheshire.core :refer :all]
         [rum.core :as rum]
         [stylefy.core :as stylefy]
-        [spicy-github.db :as database]))
+        [stylefy.rum :as stylefy-rum]))
 
-(defn- add-font-faces []
+(defn frontend-initialize! [] (stylefy/init {:dom stylefy-rum/init}))
+
+(defn add-font-faces []
     (stylefy/font-face {:font-family "'open_sans'"
                         :src         "url('./fonts/OpenSans-Regular.woff2') format('woff2'), url('./fonts/OpenSans-Regular.woff') format('woff'), url('./fonts/OpenSans-Regular.ttf')"
                         :font-weight "normal"
@@ -19,7 +20,7 @@
 (def body-style {:font-family "'open_sans', 'Courier New'"
                  })
 
-(defn- wrap-body [body]
+(defn wrap-body [body]
     [:html
      [:head
       [:title "Most Recent Spicy GitHub Issues"]
@@ -108,19 +109,19 @@
                              :font-weight     :bold
                              })
 
-(defn- get-user-html
+(defn get-user-html
     ([user] (get-user-html user user-image-style))
     ([user style]
      [:img (merge (stylefy/use-style style) {:src (:user/avatar-url user)})]))
 
-(defn- get-comment-html [comment]
+(defn get-comment-html [comment]
     [:div (stylefy/use-style comment-style)
      (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
       [:div (stylefy/use-style comment-body-style)
        [:md-block (:comment/body comment)]]]])
 
-(defn- get-ordered-comments [comments]
+(defn get-ordered-comments [comments]
     (let [ordered-by-date-comments (sort-by :comment/updated-at comments)
           root-comment (last (filter (fn [comment] (-> comment :comment/parent-comment nil?)) ordered-by-date-comments))
           comments-with-parents (filter (fn [comment] (-> comment :comment/parent-comment nil? not)) ordered-by-date-comments)
@@ -141,7 +142,7 @@
                 ))
         ))
 
-(defn- get-issue-html [issue]
+(defn get-issue-html [issue]
     [:div (stylefy/use-style issue-style)
      [:h1 (stylefy/use-style issue-header-style)
       [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/url issue)}) (:issue/title issue)]]
@@ -153,15 +154,20 @@
       ]
      ])
 
-(defn- get-issues-html [issues]
+(defn get-issues-html [issues]
     [:div (vec (conj (map get-issue-html issues) :div))])
+;; Components
+(rum/defc issues-component < rum/reactive []
+    [:div {:on-scroll #(println %1)} "Hello"])
 
-(defn index []
-    (stylefy/query-with-styles
-        (fn []
-            (add-font-faces)
-            (->
-                (database/get-n-latest-issues!)
-                get-issues-html
-                wrap-body
-                rum/render-static-markup))))
+(defn mount-components! [])
+
+;(defn index []
+;    (stylefy/query-with-styles
+;        (fn []
+;            (add-font-faces)
+;            (->
+;                (database/get-n-latest-issues!)
+;                get-issues-html
+;                wrap-body
+;                rum/render-static-markup))))
