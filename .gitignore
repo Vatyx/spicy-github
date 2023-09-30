@@ -17,3 +17,5 @@ pom.xml.asc
 spicy-github.iml
 projectFilesBackup*
 /resources/token.edn
+.lein-env
+resources/public/javascript/front_end.js
