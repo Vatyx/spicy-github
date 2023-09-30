@@ -10,13 +10,11 @@
               [clojure.edn :as edn]
               [hiccup.util]
               [gungnir.model]
-              [gungnir.transaction :as transaction]
               [gungnir.query :as q]
               [clj-time.core :as t]
               [honey.sql.helpers :as h]
               [net.cgrand.xforms :as x]
-              [throttler.core :refer [throttle-fn]])
-    (:import (java.sql Date)))
+              [throttler.core :refer [throttle-fn]]))
 
 (defn get-github-token []
     (-> (io/resource "token.edn")
@@ -42,24 +40,32 @@
 (defn add-url-query [url query]
     (.toString (hiccup.util/url url query)))
 
-(defn parse-then-persist! [parser]
+(defn parse-then-persist [parser]
     (execute #(-> %
                   parser
                   db/persist-record!)))
 
-(defn get-last-processed-repository! []
-    (-> (h/where [:< :repository/processed-at (Date. (inst-ms (t/yesterday)))])
+(defn get-last-processed-repository []
+    (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (t/yesterday)))])
         (h/order-by :repository/processed-at)
         (h/limit 10)
         (q/all! :repository)))
 
-(defn get-issues! []
+(defn get-issues []
     (q/all! :issue))
 
 (defn get-issues-url-from-repo-model [repo]
     (-> repo
-        :repository/issues-url
+        :repository/github-json-payload
+        parse-json
+        :issues_url
         sanitize-github-url))
+
+(defn get-comments-url-from-issue [issue]
+    (-> issue
+        :issue/github-json-payload
+        parse-json
+        :comments_url))
 
 (defn persist-repo [repo-url]
     (-> repo-url
@@ -69,49 +75,27 @@
         adapters/parse-repository
         db/persist-record!))
 
-(def repo-to-issue-pipeline-xf!
+(def repo-pipeline-xf
     (comp
         (map get-issues-url-from-repo-model)
         (map #(add-url-query % {:state "all"}))             ; Without stating "all" we will only get open issues
         (map paginated-iteration)                           ; Create a paginated iterator over all issues in this repo
         cat                                                 ; Iterate over the issues pagination
         cat                                                 ; Each pagination gives us a list of issues, iterate over them
-        (parse-then-persist! adapters/parse-user-from-issue) ; Save the user of each issue
-        (map adapters/parse-issue)                          ; Transform the issue into our model
-        (parse-then-persist! identity)                      ; Save the issue
-        ))
-
-(def issue-to-comments-pipeline-xf!
-    (comp
-        (map :issue/comment-url)
+        (parse-then-persist adapters/parse-user-from-issue) ; Save the user of each issue
+        (parse-then-persist adapters/parse-issue)           ; Save the issue
+        (map :comments_url)
         (map paginated-iteration)                           ; Create a paginated iterator over all comments in this issue
         cat                                                 ; Iterate over the comment pagination
         cat                                                 ; Each pagination gives us a list of comments, iterate over them
-        (parse-then-persist! adapters/parse-user-from-comment) ; Save the user of each comment
-        (map adapters/parse-comment)
-        ))
+        (parse-then-persist adapters/parse-user-from-comment) ; Save the user of each comment
+        (parse-then-persist adapters/parse-comment)))       ; Save the comment
 
-(defn process-repository-model! [repo-model]
-    (run!
-        #(transaction/execute!
-             (fn [] (let [comments (sequence issue-to-comments-pipeline-xf! %1)
-                          paired-comments (map vector comments (drop-last (conj comments nil)))]
-                        (run!
-                            (fn [paired-comment]
-                                (let [comment (paired-comment 0)
-                                      parent (paired-comment 1)
-                                      updated-comment (if (nil? parent)
-                                                          comment
-                                                          (conj comment {:comment/parent-comment (:comment/id parent)}))]
-                                    (db/persist-record! updated-comment)))
-                            paired-comments))))
-        (sequence repo-to-issue-pipeline-xf! repo-model)))
-
-(defn process-repository-models! [repo-models]
-    (run! process-repository-model! repo-models))
+(defn process-repository-models [repo-models]
+    (transduce repo-pipeline-xf (constantly nil) repo-models))
 
 (comment
-    (def repo (get-last-processed-repository!))
+    (def repo (get-last-processed-repository))
 
     (into [] (x/window 2 + -) (range 16))
 
@@ -194,11 +178,11 @@
 
     (get-github-url issues-url)
 
-    (when-let [repo (not-empty (get-last-processed-repository!))]
+    (when-let [repo (not-empty (get-last-processed-repository))]
         (println repo)
         (println "huh"))
 
-    (def comments-url (-> (get-issues!)
+    (def comments-url (-> (get-issues)
                           first
                           ))
 

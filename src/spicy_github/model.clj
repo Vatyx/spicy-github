@@ -10,7 +10,6 @@
      {:has-many {:repository/issues {:model :issue :foreign-key :issue/repository-id}}}
      [:repository/id {:primary-key true} string?]
      [:repository/url string?]
-     [:repository/issue-url string?]
      [:repository/processed-at inst?]
      [:repository/github-json-payload string?]
      [:repository/created-at {:auto true} inst?]
@@ -50,7 +49,6 @@
                    :issue/repository {:model :repository :foreign-key :issue/repository-id}}}
      [:issue/id {:primary-key true} string?]
      [:issue/url string?]
-     [:issue/comment-url string?]
      [:issue/title string?]
      [:issue/body string?]
      [:issue/total-reactions int?]

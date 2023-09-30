@@ -34,7 +34,8 @@
 (defn rollback-db! []
     (register-db!)
     (gungnir.migration/rollback! (load-resources)))
-+
+
+
 ; TODO: Fix this, it needs to have a generic query function
 ; that does a lookup and merge if records are found by that id
 (defn persist!
@@ -43,13 +44,13 @@
     ([changeset query-by-id! clean-record equality-check?]
      (persist! changeset gungnir.database/*datasource* query-by-id! clean-record equality-check?))
     ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
-     (let [input-record (:changeset/result changeset)
-           initial-results (gungnir.database/insert! changeset datasource)]
+     (let [initial-results (gungnir.database/insert! changeset datasource)]
          (if (nil? (get initial-results :changeset/errors))
-             input-record
+             changeset
              (let [diff (get changeset :changeset/diff)
-                   existing (query-by-id! input-record)]
-                 (if (equality-check? existing input-record)
+                   inputRecord (get changeset :changeset/result)
+                   existing (query-by-id! inputRecord)]
+                 (if (equality-check? existing inputRecord)
                      existing
                      (gungnir.database/update! (clean-record existing diff) datasource))
                  )
