@@ -56,6 +56,31 @@
 (defn parse-user-from-comment [comment] (-> comment :user parse-user))
 (defn parse-user-from-issue [issue] (-> issue :user parse-user))
 
+(defn sanitize-user-for-api [user]
+    {:user/id         (:user/id user)
+     :user/avatar-url (:user/avatar-url user)
+     })
+
+(defn sanitize-comment-for-api [comment]
+    (let [parent-comment-id (:comment/parent-comment comment)
+          mapped-comment {:comment/id   (:comment/id comment)
+                          :comment/body (:comment/body comment)
+                          :comment/user (sanitize-user-for-api (:comment/user comment))
+                          }]
+        (if (nil? parent-comment-id)
+            mapped-comment
+            (conj mapped-comment {:comment/parent-comment parent-comment-id}))))
+
+(defn sanitize-issue-for-api [issue]
+    {:issue/id       (:issue/id issue)
+     :issue/url      (:issue/url issue)
+     :issue/title    (:issue/title issue)
+     :issue/body     (:issue/body issue)
+     :issue/user     (sanitize-user-for-api (:issue/user issue))
+     :issue/comments (map sanitize-comment-for-api (:issue/comments issue))
+     :issue/updated-at     (:issue/updated-at issue)
+     })
+
 (comment
 
     (:html_url test)

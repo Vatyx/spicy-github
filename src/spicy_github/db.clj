@@ -66,8 +66,10 @@
             (fn [existing record] (c/create existing (c/cast record model-key)))
             model-equality?)))
 
+(def default-page-size 10)
+
 (defn get-n-latest!
-    ([table query-relations!] (get-n-latest! table query-relations! 5))
+    ([table query-relations!] (get-n-latest! table query-relations! default-page-size))
     ([table query-relations! n]
      (transaction/execute!
          (fn []
@@ -77,15 +79,15 @@
                       (helpers/limit n)
                       (q/all! table)))))))
 
-(defn get-n-latest-after!
-    ([table query-relations! after] (get-n-latest-after! table query-relations! 5 after))
-    ([table query-relations! n after]
+(defn get-n-latest-before!
+    ([table query-relations! before] (get-n-latest-before! table query-relations! default-page-size before))
+    ([table query-relations! n before]
      (transaction/execute!
          (fn []
              (map query-relations!
                   (->
                       (helpers/order-by [:updated-at :desc])
-                      (helpers/where [:< :updated-at after])
+                      (helpers/where [:< :updated-at before])
                       (helpers/limit n)
                       (q/all! table)))))))
 
@@ -101,9 +103,9 @@
     ([] (get-n-latest! :issue query-issue-relations!))
     ([n] (get-n-latest! :issue query-issue-relations! n)))
 
-(defn get-n-latest-issues-after!
-    ([after ] (get-n-latest-after! :issue query-issue-relations! after))
-    ([n after] (get-n-latest-after! :issue query-issue-relations! n after)))
+(defn get-n-latest-issues-before!
+    ([before] (get-n-latest-before! :issue query-issue-relations! before))
+    ([n before] (get-n-latest-before! :issue query-issue-relations! n before)))
 
 (defn get-n-latest-comments!
     ([] (get-n-latest! :comment query-comment-relations!))

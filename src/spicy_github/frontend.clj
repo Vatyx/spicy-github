@@ -1,9 +1,17 @@
 (ns spicy-github.frontend
     (:require
         [cheshire.core :refer :all]
+        [clojure.java.io :as io]
         [rum.core :as rum]
         [stylefy.core :as stylefy]
         [spicy-github.db :as database]))
+
+(defn get-index-html []
+    (-> (io/resource "public/index.html")
+        io/file
+        slurp))
+
+(def index-html (get-index-html))
 
 (defn- add-font-faces []
     (stylefy/font-face {:font-family "'open_sans'"

@@ -2,11 +2,12 @@
     (:require
         [rum.core :as rum]
         [stylefy.core :as stylefy]
-        [stylefy.rum :as stylefy-rum]))
+        [stylefy.rum :as stylefy-rum]
+        [spicy-github.api :as api]))
 
-(defn frontend-initialize! [] (stylefy/init {:dom stylefy-rum/init}))
+(defn frontend-initialize! [] (stylefy/init {:dom (stylefy-rum/init)}))
 
-(defn add-font-faces []
+(defn add-font-faces! []
     (stylefy/font-face {:font-family "'open_sans'"
                         :src         "url('./fonts/OpenSans-Regular.woff2') format('woff2'), url('./fonts/OpenSans-Regular.woff') format('woff'), url('./fonts/OpenSans-Regular.ttf')"
                         :font-weight "normal"
@@ -16,30 +17,6 @@
                         :font-weight "normal"
                         :font-style  "normal"})
     )
-
-(def body-style {:font-family "'open_sans', 'Courier New'"
-                 })
-
-(defn wrap-body [body]
-    [:html
-     [:head
-      [:title "Most Recent Spicy GitHub Issues"]
-      [:style {:id "_stylefy-server-styles_"} "_stylefy-server-styles-content_"] ; Generated CSS will be inserted here
-      [:style {:id "_stylefy-constant-styles_"}]
-      [:style {:id "_stylefy-styles_"}]
-      [:style (stylefy/tag "details summary a" {:text-decoration :none
-                                                :color           :#5c55fc
-                                                :font-weight     :bold})]
-      [:style (stylefy/tag "a" {:text-decoration :none
-                                :color           :#5cffcc
-                                :font-weight     :normal
-                                :font-family     "'open_sans'"})]
-      [:style (stylefy/tag "details summary::marker" {:display :none})]
-      [:style (stylefy/tag "summary" {:list-style :none})]
-      [:script {:type "module" :src "./javascript/md-block.js"}]
-      [:style (stylefy/tag "p img " {:max-width :100%})]
-      ]
-     [:body (stylefy/use-style body-style) body]])
 
 (def comment-style {:border-radius :10px
                     :margin        :10px
@@ -54,31 +31,35 @@
                               :border-radius    :20px
                               :margin           :5px
                               :opacity          :0.8
-                              :cursor           :auto})
+                              :cursor           :auto
+                              })
 
 (def comment-body-style {:flex    :9
                          :display :inline
                          :padding "0px 5px 0px 5px"})
 
-(def issue-header-style {
-                         :text-align :center
+(def issue-header-style {:text-align :center
                          })
 
-(def issue-style {:border-radius    :20px
-                  :margin-bottom    :20px
-                  :display          :flex
-                  :box-sizing       :border-box
-                  :background-color :#ccc
-                  :color            :#333
-                  :max-width        :1000px
-                  :margin           :auto
-                  :flex-direction   :column})
+(def issue-without-comments-style
+    {:border-radius    :20px
+     :margin-bottom    :20px
+     :display          :flex
+     :box-sizing       :border-box
+     :background-color :#ccc
+     :color            :#333
+     :max-width        :1000px
+     :margin           :auto
+     :flex-direction   :column})
+
+(def issue-with-comments-style (conj issue-without-comments-style {:cursor :pointer}))
 
 (def issue-body-style {:flex    :9
-                       :padding "5px 5px 20px 20px"
-                       :cursor  :pointer})
+                       :padding "5px 5px 20px 20px"})
 
-(def issue-container-style {:display :flex})
+(def issue-container-style {:display      :flex
+                            :margin-left  :10px
+                            :margin-right :10px})
 
 (def issue-user-image-style {:background-color :#fff
                              :border-radius    :50%
@@ -89,7 +70,10 @@
                                                                       :height :100px
                                                                       :flex   "0 0 100px"}]]
                              :padding          :10px
-                             :margin           :10px})
+                             :margin-bottom    :10px
+                             :margin-top       :10px
+                             :margin-right     :10px
+                             :margin-left      :auto})
 
 (def user-image-style {:background-color :#fff
                        :border-radius    :50%
@@ -103,25 +87,24 @@
                        :margin-top       :10px
                        :margin-bottom    :10px})
 
-(def issue-title-text-style {
-                             :text-decoration :none
+(def issue-title-text-style {:text-decoration :none
                              :color           :#5c55fc
                              :font-weight     :bold
                              })
 
-(defn get-user-html
+(defn- get-user-html
     ([user] (get-user-html user user-image-style))
     ([user style]
      [:img (merge (stylefy/use-style style) {:src (:user/avatar-url user)})]))
 
-(defn get-comment-html [comment]
+(defn- get-comment-html [comment]
     [:div (stylefy/use-style comment-style)
      (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
       [:div (stylefy/use-style comment-body-style)
        [:md-block (:comment/body comment)]]]])
 
-(defn get-ordered-comments [comments]
+(defn- get-ordered-comments [comments]
     (let [ordered-by-date-comments (sort-by :comment/updated-at comments)
           root-comment (last (filter (fn [comment] (-> comment :comment/parent-comment nil?)) ordered-by-date-comments))
           comments-with-parents (filter (fn [comment] (-> comment :comment/parent-comment nil? not)) ordered-by-date-comments)
@@ -130,10 +113,7 @@
             (if (empty? chain)
                 (if (nil? root-comment)
                     chain
-                    (let [matching (get comments-by-parent-id (:comment/id root-comment))]
-                        (if (nil? matching)
-                            chain
-                            (recur (conj chain matching)))))
+                    (recur (conj chain root-comment)))
                 (let [matching (get comments-by-parent-id (:comment/id (last chain)))]
                     (if (nil? matching)
                         chain
@@ -142,8 +122,10 @@
                 ))
         ))
 
-(defn get-issue-html [issue]
-    [:div (stylefy/use-style issue-style)
+(defn- get-issue-html [issue]
+    [:div (if (empty? (:issue/comments issue))
+              (stylefy/use-style issue-without-comments-style)
+              (stylefy/use-style issue-with-comments-style))
      [:h1 (stylefy/use-style issue-header-style)
       [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/url issue)}) (:issue/title issue)]]
      [:details
@@ -154,20 +136,119 @@
       ]
      ])
 
-(defn get-issues-html [issues]
+(defn- get-issues-html [issues]
     [:div (vec (conj (map get-issue-html issues) :div))])
-;; Components
-(rum/defc issues-component < rum/reactive []
-    [:div {:on-scroll #(println %1)} "Hello"])
 
-(defn mount-components! [])
+;; https://gist.github.com/nberger/b5e316a43ffc3b7d5e084b228bd83899
 
-;(defn index []
-;    (stylefy/query-with-styles
-;        (fn []
-;            (add-font-faces)
-;            (->
-;                (database/get-n-latest-issues!)
-;                get-issues-html
-;                wrap-body
-;                rum/render-static-markup))))
+(defn- get-scroll-top []
+    (if (exists? (.-pageYOffset js/window))
+        (.-pageYOffset js/window)
+        (.-scrollTop (or (.-documentElement js/document)
+                         (.-parentNode (.-body js/document))
+                         (.-body js/document)))))
+
+(defn- get-top-position [node]
+    (if (not node)
+        0
+        (+ (.-offsetTop node) (get-top-position (.-offsetParent node)))))
+
+(defn- safe-component-mounted? [component]
+    (try (boolean (rum/dom-node component)) (catch js/Object _ false)))
+
+(defn debounce
+    "Returns a function that will call f only after threshold has passed without new calls
+    to the function. Calls prep-fn on the args in a sync way, which can be used for things like
+    calling .persist on the event object to be able to access the event attributes in f"
+    ([threshold f] (debounce threshold f (constantly nil)))
+    ([threshold f prep-fn]
+     (let [t (atom nil)]
+         (fn [& args]
+             (when @t (js/clearTimeout @t))
+             (apply prep-fn args)
+             (reset! t (js/setTimeout #(do
+                                           (reset! t nil)
+                                           (apply f args))
+                                      threshold))))))
+
+(def issues (atom []))
+
+(def can-load-more (atom true))
+
+(def is-loading-issues (atom false))
+
+(defn- update-issues! [new-issues]
+    (if (empty? new-issues)
+        (reset! can-load-more false)
+        (reset! issues (concat @issues new-issues))))
+
+(defn- try-initialize-issues! []
+    (when (empty? @issues)
+        (api/get-n-issues-before update-issues!)))
+
+(defn- load-fn []
+    (reset! is-loading-issues true)
+    (try (api/get-n-issues-before-from-issues update-issues! @issues) (catch js/Object _ (reset! is-loading-issues false)))
+    (reset! is-loading-issues false))
+
+(def listener-fn (atom nil))
+
+(defn- detach-scroll-listener [state]
+    (when @listener-fn
+        (.removeEventListener js/window "scroll" @listener-fn)
+        (.removeEventListener js/window "resize" @listener-fn)
+        (reset! listener-fn nil)
+        (reset! can-load-more true))
+    state)
+
+(defn- should-load-more? [state]
+    (let [node (rum/dom-node state)
+          scroll-top (get-scroll-top)
+          my-top (get-top-position node)
+          threshold 250]
+        (if (not (nil? node))
+            (< (- (+ my-top (.-offsetHeight node))
+                  scroll-top
+                  (.-innerHeight js/window))
+               threshold)
+            false)))
+
+(defn- scroll-listener [state]
+    (when (safe-component-mounted? state)
+        (when (and @can-load-more (should-load-more? state) (not @is-loading-issues))
+            (detach-scroll-listener state)
+            (load-fn))))
+
+(def debounced-scroll-listener (debounce 5 scroll-listener))
+
+(defn- attach-scroll-listener [state]
+    (when-not @listener-fn
+        (reset! listener-fn (partial debounced-scroll-listener state))
+        (.addEventListener js/window "scroll" @listener-fn)
+        (.addEventListener js/window "resize" @listener-fn))
+    state)
+
+(rum/defcs issues-stateful-component
+    <
+    rum/reactive
+    {:did-mount    (fn [state] (attach-scroll-listener state))
+     :did-update   (fn [state] (attach-scroll-listener state))
+     :will-unmount (fn [state] (detach-scroll-listener state))}
+    [state]
+    (get-issues-html @issues))
+
+; Setup Stylefy
+(frontend-initialize!)
+(add-font-faces!)
+; Seed initial issues
+(api/get-n-issues-before update-issues!)
+; Component mounting
+(rum/mount (issues-stateful-component) (.getElementById js/document "issues-container"))
+(js/setInterval
+    #(rum/mount (issues-stateful-component) (.getElementById js/document "issues-container"))
+    1000)
+
+; Maybe we got an error on first load, try again until we don't have errors
+(js/setInterval
+    try-initialize-issues!
+    1000)
