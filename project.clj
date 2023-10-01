@@ -25,19 +25,21 @@
                    [rum "0.12.11"]
                    [environ "1.2.0"]
                    [stylefy "3.2.0"]
-                   [stylefy/rum "3.0.0"]]
+                   [stylefy/rum "3.0.0"]
+                   [cljs-http "0.1.46"]]
     :main ^:skip-aot spicy-github.core
     :aot [spicy-github.core]
     :target-path "target/%s"
     :plugins [[lein-ring "0.12.6"]
               [lein-cljsbuild "1.1.8"]
               [lein-environ "1.2.0"]]
-    :prep-tasks ["compile" ["cljsbuild" "once"]]
+    :hooks [leiningen.cljsbuild]
     :ring {:handler spicy-github.api/app}
     :cljsbuild {:builds [{:source-paths ["front_end/src"]
                           :compiler     {:output-to     "resources/public/javascript/front_end.js"
                                          :optimizations :whitespace
-                                         :pretty-print  true}}]}
+                                         :pretty-print  true}
+                          :jar          true}]}
     :profiles {:dev          [:project/dev :profiles/dev]
                :uberjar      {:aot      :all
                               :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}

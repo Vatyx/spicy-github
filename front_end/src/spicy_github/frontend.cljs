@@ -2,11 +2,14 @@
     (:require
         [rum.core :as rum]
         [stylefy.core :as stylefy]
-        [stylefy.rum :as stylefy-rum]))
+        [stylefy.rum :as stylefy-rum]
+        [spicy-github.api :as api]))
 
-(defn frontend-initialize! [] (stylefy/init {:dom stylefy-rum/init}))
+(defn frontend-initialize! [] (stylefy/init {:dom (stylefy-rum/init)}))
 
-(defn add-font-faces []
+(frontend-initialize!)
+
+(defn add-font-faces! []
     (stylefy/font-face {:font-family "'open_sans'"
                         :src         "url('./fonts/OpenSans-Regular.woff2') format('woff2'), url('./fonts/OpenSans-Regular.woff') format('woff'), url('./fonts/OpenSans-Regular.ttf')"
                         :font-weight "normal"
@@ -17,29 +20,10 @@
                         :font-style  "normal"})
     )
 
+(add-font-faces!)
+
 (def body-style {:font-family "'open_sans', 'Courier New'"
                  })
-
-(defn wrap-body [body]
-    [:html
-     [:head
-      [:title "Most Recent Spicy GitHub Issues"]
-      [:style {:id "_stylefy-server-styles_"} "_stylefy-server-styles-content_"] ; Generated CSS will be inserted here
-      [:style {:id "_stylefy-constant-styles_"}]
-      [:style {:id "_stylefy-styles_"}]
-      [:style (stylefy/tag "details summary a" {:text-decoration :none
-                                                :color           :#5c55fc
-                                                :font-weight     :bold})]
-      [:style (stylefy/tag "a" {:text-decoration :none
-                                :color           :#5cffcc
-                                :font-weight     :normal
-                                :font-family     "'open_sans'"})]
-      [:style (stylefy/tag "details summary::marker" {:display :none})]
-      [:style (stylefy/tag "summary" {:list-style :none})]
-      [:script {:type "module" :src "./javascript/md-block.js"}]
-      [:style (stylefy/tag "p img " {:max-width :100%})]
-      ]
-     [:body (stylefy/use-style body-style) body]])
 
 (def comment-style {:border-radius :10px
                     :margin        :10px
@@ -78,7 +62,9 @@
                        :padding "5px 5px 20px 20px"
                        :cursor  :pointer})
 
-(def issue-container-style {:display :flex})
+(def issue-container-style {:display      :flex
+                            :margin-left  :10px
+                            :margin-right :10px})
 
 (def issue-user-image-style {:background-color :#fff
                              :border-radius    :50%
@@ -89,7 +75,10 @@
                                                                       :height :100px
                                                                       :flex   "0 0 100px"}]]
                              :padding          :10px
-                             :margin           :10px})
+                             :margin-bottom    :10px
+                             :margin-top       :10px
+                             :margin-right     :10px
+                             :margin-left      :auto})
 
 (def user-image-style {:background-color :#fff
                        :border-radius    :50%
@@ -156,18 +145,105 @@
 
 (defn get-issues-html [issues]
     [:div (vec (conj (map get-issue-html issues) :div))])
-;; Components
-(rum/defc issues-component < rum/reactive []
-    [:div {:on-scroll #(println %1)} "Hello"])
 
-(defn mount-components! [])
+;; https://gist.github.com/nberger/b5e316a43ffc3b7d5e084b228bd83899
 
-;(defn index []
-;    (stylefy/query-with-styles
-;        (fn []
-;            (add-font-faces)
-;            (->
-;                (database/get-n-latest-issues!)
-;                get-issues-html
-;                wrap-body
-;                rum/render-static-markup))))
+(defn- get-scroll-top []
+    (if (exists? (.-pageYOffset js/window))
+        (.-pageYOffset js/window)
+        (.-scrollTop (or (.-documentElement js/document)
+                         (.-parentNode (.-body js/document))
+                         (.-body js/document)))))
+
+(defn- get-top-position [node]
+    (if (not node)
+        0
+        (+ (.-offsetTop node) (get-top-position (.-offsetParent node)))))
+
+(defn debounce
+    "Returns a function that will call f only after threshold has passed without new calls
+    to the function. Calls prep-fn on the args in a sync way, which can be used for things like
+    calling .persist on the event object to be able to access the event attributes in f"
+    ([threshold f] (debounce threshold f (constantly nil)))
+    ([threshold f prep-fn]
+     (let [t (atom nil)]
+         (fn [& args]
+             (when @t (js/clearTimeout @t))
+             (apply prep-fn args)
+             (reset! t (js/setTimeout #(do
+                                           (reset! t nil)
+                                           (apply f args))
+                                      threshold))))))
+
+(def issues (atom []))
+
+(def can-load-more (atom true))
+
+(defn- update-issues! [new-issues]
+    (if (empty? new-issues)
+        (reset! can-load-more false)
+        (reset! issues (concat @issues new-issues))))
+
+(api/get-n-issues-before update-issues!)
+
+(defn- try-initialize-issues! []
+    (when (empty? @issues)
+        (api/get-n-issues-before update-issues!)))
+
+(defn- load-fn []
+    (api/get-n-issues-before-from-issues @issues update-issues!))
+
+(def listener-fn (atom nil))
+
+(defn- detach-scroll-listener []
+    (when @listener-fn
+        (.removeEventListener js/window "scroll" @listener-fn)
+        (.removeEventListener js/window "resize" @listener-fn)
+        (reset! listener-fn nil)
+        (reset! can-load-more true)))
+
+(defn- should-load-more? [state]
+    (let [node (rum/dom-node state)
+          scroll-top (get-scroll-top)
+          my-top (get-top-position node)
+          threshold 50]
+        (< (- (+ my-top (.-offsetHeight node))
+              scroll-top
+              (.-innerHeight js/window))
+           threshold)))
+
+(defn- scroll-listener [state]
+    (println (str "Scrolling! State: '" state "'"))
+    (when (and @can-load-more (should-load-more? state))
+        (println "loading more...")
+        (detach-scroll-listener)
+        (load-fn)))
+
+(defn- debounced-scroll-listener [] (debounce 200 scroll-listener))
+
+(defn- attach-scroll-listener [state]
+    (println "Attaching scroll listener...")
+    (when should-load-more? state
+                            (when-not @listener-fn
+                                (reset! listener-fn (partial debounced-scroll-listener state))
+                                (.addEventListener js/window "scroll" @listener-fn)
+                                (.addEventListener js/window "resize" @listener-fn))))
+
+(rum/defcs issues-stateful-component
+    <
+    rum/reactive
+    {:did-mount    (fn [state] (attach-scroll-listener state))
+     :did-update   (fn [state] (attach-scroll-listener state))
+     :will-unmount detach-scroll-listener}
+    [state]
+    (get-issues-html @issues))
+
+(rum/mount (issues-stateful-component) (.getElementById js/document "issues-container"))
+
+(js/setInterval
+    #(rum/mount (issues-stateful-component) (.getElementById js/document "issues-container"))
+    1000)
+
+(js/setInterval
+    try-initialize-issues!
+    5000)
