@@ -72,13 +72,13 @@
             (conj mapped-comment {:comment/parent-comment parent-comment-id}))))
 
 (defn sanitize-issue-for-api [issue]
-    {:issue/id       (:issue/id issue)
-     :issue/url      (:issue/url issue)
-     :issue/title    (:issue/title issue)
-     :issue/body     (:issue/body issue)
-     :issue/user     (sanitize-user-for-api (:issue/user issue))
-     :issue/comments (map sanitize-comment-for-api (:issue/comments issue))
-     :issue/updated-at     (:issue/updated-at issue)
+    {:issue/id         (:issue/id issue)
+     :issue/url        (:issue/url issue)
+     :issue/title      (:issue/title issue)
+     :issue/body       (:issue/body issue)
+     :issue/user       (sanitize-user-for-api (:issue/user issue))
+     :issue/comments   (map sanitize-comment-for-api (:issue/comments issue))
+     :issue/updated-at (:issue/updated-at issue)
      })
 
 (comment
