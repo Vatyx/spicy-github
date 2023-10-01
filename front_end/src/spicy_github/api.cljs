@@ -19,7 +19,7 @@
     ([response-fn] (get-n-issues-before-get-response (get-n-issues-before-endpoint) response-fn))
     ([response-fn before] (get-n-issues-before-get-response (get-n-issues-before-endpoint before) response-fn)))
 
-(defn get-n-issues-before-from-issues
-    ([response-fn issues] (if (empty issues)
-                              (get-n-issues-before response-fn)
-                              (get-n-issues-before (:updated-at (issues (- (count issues) 1))) response-fn))))
+(defn get-n-issues-before-from-issues [response-fn issues]
+    (if (empty? issues)
+        (get-n-issues-before response-fn)
+        (get-n-issues-before response-fn (js/Date. (:issue/updated-at (last issues))))))

@@ -78,6 +78,7 @@
      :issue/body     (:issue/body issue)
      :issue/user     (sanitize-user-for-api (:issue/user issue))
      :issue/comments (map sanitize-comment-for-api (:issue/comments issue))
+     :issue/updated-at     (:issue/updated-at issue)
      })
 
 (comment
