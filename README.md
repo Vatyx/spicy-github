@@ -12,6 +12,10 @@ To compile ClojureScript for dev
 
     $ lein cljsbuild once
 
+To auto-watch and re-compile Clojurescript on the fly
+
+    $ lein cljsbuild auto
+
 To start the application server in headless mode, run the following command. It will start the server on port 3000.
 
     $ lein ring server-headless
