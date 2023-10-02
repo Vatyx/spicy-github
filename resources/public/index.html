@@ -36,6 +36,20 @@
         details > summary::-webkit-details-marker {
             display: none;
         }
+
+        @keyframes open {
+            0% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        details[open] summary~* {
+            animation: open .25s cubic-bezier(0.785, 0.135, 0.15, 0.86);
+        }
     </style>
 </head>
 <body>
