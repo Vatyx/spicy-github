@@ -21,7 +21,8 @@
 (def comment-style {:border-radius :10px
                     :margin        :10px
                     :color         :#fff
-                    :display       :flex})
+                    :display       :flex
+                    :cursor        :auto})
 
 (def comment-container-style {:font-family      "'open_sans_light', 'open_sans', 'Courier New'"
                               :display          :flex
