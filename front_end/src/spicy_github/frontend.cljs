@@ -15,8 +15,7 @@
     (stylefy/font-face {:font-family "'open_sans_light'"
                         :src         "url('./fonts/OpenSans-Light.woff2') format('woff2'), url('./fonts/OpenSans-Light.woff') format('woff'), url('./fonts/OpenSans-Light.ttf')"
                         :font-weight "normal"
-                        :font-style  "normal"})
-    )
+                        :font-style  "normal"}))
 
 (def comment-style {:border-radius :10px
                     :margin        :10px
@@ -32,15 +31,13 @@
                               :border-radius    :20px
                               :margin           :5px
                               :opacity          :0.8
-                              :cursor           :auto
-                              })
+                              :cursor           :auto})
 
 (def comment-body-style {:flex    :9
                          :display :inline
                          :padding "0px 5px 0px 5px"})
 
-(def issue-header-style {:text-align :center
-                         })
+(def issue-header-style {:text-align :center})
 
 (def issue-without-comments-style
     {:border-radius    :20px
@@ -90,8 +87,7 @@
 
 (def issue-title-text-style {:text-decoration :none
                              :color           :#5c55fc
-                             :font-weight     :bold
-                             })
+                             :font-weight     :bold})
 
 (defn- get-user-html
     ([user] (get-user-html user user-image-style))

@@ -15,14 +15,12 @@
     {:repository/id                  (-> r :id str)
      :repository/url                 (:url r)
      :repository/processed-at        (java.sql.Date. 0)
-     :repository/github-json-payload (generate-string r)
-     })
+     :repository/github-json-payload (generate-string r)})
 
 (defn parse-user [user-json]
     {:user/id         (-> user-json :id str)
      :user/avatar-url (:avatar_url user-json)
-     :user/url        (:url user-json)
-     })
+     :user/url        (:url user-json)})
 
 (defn parse-user-from [json]
     (-> json
@@ -39,8 +37,7 @@
      :issue/issue-creation-time (:created_at issue-json)
      :issue/issue-updated-time  (:updated_at issue-json)
      :issue/user-id             (-> issue-json :user :id str)
-     :issue/github-json-payload (generate-string issue-json)
-     })
+     :issue/github-json-payload (generate-string issue-json)})
 
 (defn parse-comment [comment-json]
     {:comment/id                    (-> comment-json :id str)
@@ -50,16 +47,14 @@
      :comment/comment-updated-time  (:updated_at comment-json)
      :comment/issue-id              (-> comment-json :issue_url get-issue-id-for-issue-url)
      :comment/user-id               (-> comment-json :user :id str)
-     :comment/github-json-payload   (generate-string comment-json)
-     })
+     :comment/github-json-payload   (generate-string comment-json)})
 
 (defn parse-user-from-comment [comment] (-> comment :user parse-user))
 (defn parse-user-from-issue [issue] (-> issue :user parse-user))
 
 (defn sanitize-user-for-api [user]
     {:user/id         (:user/id user)
-     :user/avatar-url (:user/avatar-url user)
-     })
+     :user/avatar-url (:user/avatar-url user)})
 
 (defn sanitize-comment-for-api [comment]
     (let [parent-comment-id (:comment/parent-comment comment)
