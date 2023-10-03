@@ -48,5 +48,4 @@
                                              [ring/ring-mock "0.3.2"]]}}
     :aliases {"db-initialize" ["run" "-m" "spicy-github.db/initialize-db!"]
               "db-migrate"    ["run" "-m" "spicy-github.db/migrate-db!"]
-              "db-rollback"   ["run" "-m" "spicy-github.db/rollback-db!"]
-              })
+              "db-rollback"   ["run" "-m" "spicy-github.db/rollback-db!"]})
