@@ -174,10 +174,13 @@
 
 (def is-loading-issues (atom false))
 
+(def refresh-issues-fn (atom nil))
+
 (defn- update-issues! [new-issues]
     (if (empty? new-issues)
         (reset! can-load-more false)
-        (reset! issues (concat @issues new-issues))))
+        (reset! issues (concat @issues new-issues)))
+    (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn)))
 
 (defn- try-initialize-issues! []
     (when (empty? @issues)
@@ -186,6 +189,7 @@
 (defn- load-fn []
     (reset! is-loading-issues true)
     (try (api/get-n-issues-before-from-issues update-issues! @issues) (catch js/Object _ (reset! is-loading-issues false)))
+    (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn))
     (reset! is-loading-issues false))
 
 (def listener-fn (atom nil))
@@ -237,13 +241,17 @@
 ; Setup Stylefy
 (frontend-initialize!)
 (add-font-faces!)
+
+; Component mounting
+(defn- mount-issues-component! []
+    (rum/mount (issues-stateful-component) (.getElementById js/document "issues-container")))
+
+(mount-issues-component!)
+
+(reset! refresh-issues-fn mount-issues-component!)
+
 ; Seed initial issues
 (api/get-n-issues-before update-issues!)
-; Component mounting
-(rum/mount (issues-stateful-component) (.getElementById js/document "issues-container"))
-(js/setInterval
-    #(rum/mount (issues-stateful-component) (.getElementById js/document "issues-container"))
-    1000)
 
 ; Maybe we got an error on first load, try again until we don't have errors
 (js/setInterval
