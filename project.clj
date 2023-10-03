@@ -37,8 +37,8 @@
     :ring {:handler spicy-github.api/app}
     :cljsbuild {:builds [{:source-paths ["front_end/src"]
                           :compiler     {:output-to     "resources/public/javascript/front_end.js"
-                                         :optimizations :whitespace
-                                         :pretty-print  true}
+                                         :optimizations :advanced
+                                         :pretty-print  false}
                           :jar          true}]}
     :profiles {:dev          [:project/dev :profiles/dev]
                :uberjar      {:aot      :all
