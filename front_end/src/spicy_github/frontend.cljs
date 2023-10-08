@@ -31,6 +31,7 @@
                               :border-radius    :20px
                               :margin           :5px
                               :opacity          :0.8
+                              :max-width        :820px
                               :cursor           :auto})
 
 (def comment-body-style {:flex    :9
