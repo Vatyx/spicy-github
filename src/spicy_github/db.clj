@@ -1,18 +1,22 @@
 (ns spicy-github.db
-  (:gen-class)
+    (:gen-class)
     (:require [gungnir.changeset :as c]
               [gungnir.database]
               [gungnir.migration]
+              [gungnir.transaction :as transaction]
               [gungnir.query :as q]
-              [taoensso.timbre :as timbre]
+              [taoensso.timbre :as timbre] 
+              [honey.sql]
+              [honeysql.core]
+              [honey.sql.helpers :as helpers]
               [spicy-github.util :refer :all]))
 
 (def db-config
-  {:adapter "postgresql"
-   :database-name "spicy-github"
-   :server-name "localhost"
-   :username "postgres"
-   :password ""})
+    {:adapter       "postgresql"
+     :database-name "spicy-github"
+     :server-name   "localhost"
+     :username      "postgres"
+     :password      ""})
 
 (defn register-db! [] (gungnir.database/make-datasource! db-config))
 
@@ -25,12 +29,13 @@
         (gungnir.migration/migrate! migrations)))
 
 (defn migrate-db! []
-  (register-db!)
-  (gungnir.migration/migrate! (load-resources)))
+    (register-db!)
+    (gungnir.migration/migrate! (load-resources)))
 
 (defn rollback-db! []
-  (register-db!)
-  (gungnir.migration/rollback! (load-resources)))
+    (register-db!)
+    (gungnir.migration/rollback! (load-resources)))
+
 
 ; TODO: Fix this, it needs to have a generic query function
 ; that does a lookup and merge if records are found by that id
@@ -63,5 +68,50 @@
             (fn [record] (q/find! model-key (id-key record)))
             (fn [existing record] (c/create existing (c/cast record model-key)))
             model-equality?)))
+
+(def default-page-size 10)
+
+(defn get-n-latest!
+    ([table query-relations!] (get-n-latest! table query-relations! default-page-size))
+    ([table query-relations! n]
+     (transaction/execute!
+         (fn []
+             (map query-relations!
+                  (->
+                      (helpers/order-by [:updated-at :desc])
+                      (helpers/limit n)
+                      (q/all! table)))))))
+
+(defn get-n-latest-before!
+    ([table query-relations! before] (get-n-latest-before! table query-relations! default-page-size before))
+    ([table query-relations! n before]
+     (transaction/execute!
+         (fn []
+             (map query-relations!
+                  (->
+                      (helpers/order-by [:updated-at :desc])
+                      (helpers/where [:< :updated-at before])
+                      (helpers/limit n)
+                      (q/all! table)))))))
+
+
+(defn query-comment-relations! [comment]
+    (q/load! comment :comment/user))
+
+(defn query-issue-relations! [issue]
+    (let [mapped-issue (q/load! issue :issue/user :issue/comments)]
+        (assoc mapped-issue :issue/comments (map query-comment-relations! (:issue/comments mapped-issue)))))
+
+(defn get-n-latest-issues!
+    ([] (get-n-latest! :issue query-issue-relations!))
+    ([n] (get-n-latest! :issue query-issue-relations! n)))
+
+(defn get-n-latest-issues-before!
+    ([before] (get-n-latest-before! :issue query-issue-relations! before))
+    ([n before] (get-n-latest-before! :issue query-issue-relations! n before)))
+
+(defn get-n-latest-comments!
+    ([] (get-n-latest! :comment query-comment-relations!))
+    ([n] (get-n-latest! :comment query-comment-relations! n)))
 
 (register-db!)

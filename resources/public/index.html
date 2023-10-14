@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spicy GitHub Issues</title>
+    <style id="_stylefy-constant-styles_"></style>
+    <style id="_stylefy-styles_"></style>
+    <script type="module" src="./javascript/md-block.js"></script>
+    <style>
+        body {
+            font-family: 'open_sans', 'Courier New', serif;
+        }
+
+        p img {
+            max-width: 100%;
+        }
+
+        a {
+            text-decoration:  none;
+            color: #5cffcc;
+            font-weight: normal;
+            font-family: 'open_sans', 'Courier New', serif;
+        }
+
+        details summary a {
+            text-decoration: none;
+            color: #5c55fc;
+            font-weight: bold;
+        }
+
+        details > summary {
+            list-style: none;
+        }
+
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        @keyframes open {
+            0% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        details[open] summary~* {
+            animation: open .25s cubic-bezier(0.785, 0.135, 0.15, 0.86);
+        }
+    </style>
+</head>
+<body>
+    <div id="issues-container"></div>
+    <script src="./javascript/front_end.js"></script>
+</body>
+</html>

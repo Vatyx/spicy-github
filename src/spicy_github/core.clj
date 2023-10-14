@@ -1,10 +1,17 @@
 (ns spicy-github.core
   (:gen-class)
-    (:require [ring.adapter.jetty :as jetty]
-              [spicy-github.scraper]
-              [clojure.core.async :as a]
-              [spicy-github.api]))
+    (:require
+     [ring.adapter.jetty :as jetty] 
+     [spicy-github.db :as db] 
+     [spicy-github.api :as app] 
+     [spicy-github.model :as model]))
+
+(defn initialize! []
+    (db/register-db!)
+    (model/register-models!))
 
 (defn -main
-    [& _]
-    (jetty/run-jetty spicy-github.api/app {:port 3000}))
+    [& args]
+    (initialize!)
+    (db/migrate-db!)
+    (jetty/run-jetty app/app {:port 3000}))

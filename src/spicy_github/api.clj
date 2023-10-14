@@ -1,19 +1,46 @@
 (ns spicy-github.api
-  (:gen-class)
-  (:require [compojure.core :refer :all]
-            [compojure.route :as route]
-            [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
-            [clojure.pprint]))
+    (:gen-class)
+    (:require [compojure.core :refer :all]
+              [compojure.route :as route]
+              [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
+              [ring.middleware.reload :refer [wrap-reload]]
+              [spicy-github.frontend :as frontend]
+              [spicy-github.adapters :as adapters]
+              [spicy-github.db :as db]
+              [cheshire.core :refer :all]
+              [clojure.instant :as instant]
+              [clojure.pprint]
+              [spicy-github.env :refer [cljs-env]])
+    (:import (java.util Date)))
 
-(defn index [request]
-  (clojure.pprint/pprint request)
-  {:status 200
-   :headers {"Content-Type" "application/json"}
-   :body "{\"Contents\": \"Hello world\"}"})
+(defn- landing-page [_]
+    {:status  200
+     :headers {"Content-Type" "text/html"}
+     :body    frontend/index-html})
+
+(defn get-n-latest-issues-before! [before]
+    (generate-string
+        (map adapters/sanitize-issue-for-api
+             (db/get-n-latest-issues-before!
+                 (if (nil? before)
+                     (new Date)
+                     (instant/read-instant-date before))))))
+
+(defn- get-n-latest-issues-before-api! [before]
+    {:status  200
+     :headers {"Content-Type" "application/json"}
+     :body    (get-n-latest-issues-before! before)})
 
 (defroutes app-routes
-           (GET "/" []  index)
+           (GET "/" [] landing-page)
+           (GET "/latest-issues/:before" [before] (get-n-latest-issues-before-api! before))
+           (route/resources "/")
            (route/not-found "Not Found"))
 
-(def app
-  (wrap-defaults app-routes site-defaults))
+(def app (let [reload-server (parse-boolean (cljs-env :reload-server))]
+             (if (nil? reload-server)
+                 (wrap-defaults app-routes site-defaults)
+                 (if reload-server
+                     (wrap-reload (wrap-defaults app-routes site-defaults))
+                     (wrap-defaults app-routes site-defaults))
+                 )))
