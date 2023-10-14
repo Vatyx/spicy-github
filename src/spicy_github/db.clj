@@ -4,6 +4,7 @@
               [gungnir.database]
               [gungnir.migration]
               [gungnir.query :as q]
+              [taoensso.timbre :as timbre]
               [spicy-github.util :refer :all]))
 
 (def db-config
@@ -41,7 +42,7 @@
     ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
      (let [initial-results (gungnir.database/insert! changeset datasource)]
          (if (nil? (get initial-results :changeset/errors))
-             changeset
+             (timbre/spy :debug "Successfully inserted: " (:changeset/result changeset))
              (let [diff (get changeset :changeset/diff)
                    inputRecord (get changeset :changeset/result)
                    existing (query-by-id! inputRecord)]
@@ -51,7 +52,9 @@
                  )
              ))))
 
+
 (defn persist-record! [record]
+    (timbre/debug "Persisting Record: " record)
     (let [changeset (c/create record)
           model-key (:changeset/model changeset)
           id-key (namespace-key model-key :id)]

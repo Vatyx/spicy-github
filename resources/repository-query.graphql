@@ -1,0 +1,15 @@
+query {
+  search(query: "stars:>1000 sort:stars", type: REPOSITORY, first:100 %s) {
+    pageInfo { endCursor hasNextPage hasPreviousPage startCursor}
+    edges {
+      node {
+        ...on Repository {
+          id
+          name
+          url
+          stargazerCount
+        }
+      }
+    }
+  }
+}

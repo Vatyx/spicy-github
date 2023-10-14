@@ -1,15 +1,18 @@
 (ns spicy-github.model
   (:gen-class)
-  (:require [gungnir.model])
+  (:require [gungnir.model]
+            [spicy-github.util :refer :all])
   (:import (java.time Instant)))
 
 (defmethod gungnir.model/before-save :get-current-time [_k _v] (Instant/now))
+(defmethod gungnir.model/before-save :sanitize-github-url [_k v] (sanitize-github-url v))
 
 (def repository-model
     [:map
      {:has-many {:repository/issues {:model :issue :foreign-key :issue/repository-id}}}
      [:repository/id {:primary-key true} string?]
      [:repository/url string?]
+     [:repository/issues-url {:before-save [:sanitize-github-url]} string?]
      [:repository/processed-at inst?]
      [:repository/github-json-payload string?]
      [:repository/created-at {:auto true} inst?]
@@ -51,6 +54,7 @@
      [:issue/url string?]
      [:issue/title string?]
      [:issue/body string?]
+     [:issue/comments-url {:before-save [:sanitize-github-url]} string?]
      [:issue/total-reactions int?]
      [:issue/comment-count int?]
      [:issue/issue-creation-time inst?]

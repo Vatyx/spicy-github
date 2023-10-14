@@ -12,41 +12,108 @@
               [hiccup.util]
               [gungnir.model]
               [gungnir.query :as q]
+              [gungnir.transaction :as transaction]
               [clj-time.core :as t]
               [honey.sql.helpers :as h]
               [net.cgrand.xforms :as x]
+              [taoensso.timbre :as timbre]
               [throttler.core :refer [throttle-fn]]))
 
-(defn get-github-token []
+(def new-config (assoc timbre/*config* :middleware
+                                       [(fn [data]
+                                            (update data :vargs (partial mapv #(if (string? %)
+                                                                                   %
+                                                                                   (with-out-str (clojure.pprint/pprint %))))))]))
+
+(defn load-repository-query [] (load-resource "repository-query.graphql"))
+
+(timbre/set-config! new-config)
+
+(defn load-github-tokens []
     (-> (io/resource "token.edn")
         io/file
         slurp
         edn/read-string
         :github-token))
 
-(def get-url (throttle-fn client/get 5000 :hour))
+(def get-github-token
+    (let [counter (atom 0)
+          tokens (load-github-tokens)]
+        (fn []
+            (swap! counter inc)
+            (nth tokens (mod @counter (count tokens))))))
 
-(def github-token (get-github-token))
+(def request (throttle-fn client/request 4800 :hour))
 
-(defn get-github-url [url]
-    (get-url url {:headers {"Authorization" (str "Bearer " github-token)}}))
+(defn request-retry [payload retry-count]
+    (let [request-fn #(request payload)]
+        (if (zero? retry-count)
+            (request-fn)
+            (try
+                (request-fn)
+                (catch Exception e
+                    (request-retry payload (dec retry-count))
+                    )))))
+
+(defn make-request [url & [params]]
+    (timbre/debug "Making Request: " url)
+    (request-retry (merge
+                 {:url url}
+                 {:headers {"Authorization" (str "Bearer " (get-github-token))}}
+                 {:method :get}
+                 params)
+                   5))
+
+(defn make-github-graphql-request [query]
+    (let [body-payload "{\"query\":\n\"%s\" }"
+          newline-sanitized-query (clojure.string/replace query #"\r\n|\n|\r" "")
+          quote-escaped-query (clojure.string/escape newline-sanitized-query {\" "\\\""})
+          formatted-body (format body-payload quote-escaped-query)]
+        (make-request "https://api.github.com/graphql" {:method :post
+                                                        :body   formatted-body})))
+
+(defn get-repository-query
+    ([] (format (load-repository-query) ""))
+    ([end-cursor] (format (load-repository-query) (format "after: \"%s\"" end-cursor))))
 
 (defn paginated-iteration [paginated-url]
-    (iteration #(get-github-url %1)
-               :kf #(-> %1 :links :next :href)
-               :vf #(parse-json (:body %1))
+    (iteration #(make-request %1)
+               :kf #(->> %
+                         :links
+                         :next
+                         :href)
+               :vf #(->> %
+                         :body
+                         parse-json)
                :initk paginated-url
                :somef :body))
+
+(defn paginated-graphql-iteration []
+    (iteration #(-> %
+                    make-github-graphql-request
+                    :body
+                    parse-json
+                    :data
+                    :search)
+               :kf #(-> %
+                        :pageInfo
+                        :endCursor
+                        get-repository-query)
+               :vf :edges
+               :initk (get-repository-query)
+               :somef #(-> %
+                           :edges
+                           not-empty)))
 
 (defn add-url-query [url query]
     (.toString (hiccup.util/url url query)))
 
-(defn parse-then-persist [parser]
+(defn parse-then-persist! [parser]
     (execute #(-> %
                   parser
                   db/persist-record!)))
 
-(defn get-last-processed-repository []
+(defn get-last-processed-repository! []
     (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (t/yesterday)))])
         (h/order-by :repository/processed-at)
         (h/limit 10)
@@ -70,39 +137,184 @@
 
 (defn persist-repo [repo-url]
     (-> repo-url
-        get-github-url
+        make-request
         :body
         parse-json
         adapters/parse-repository
         db/persist-record!))
 
-(def repo-pipeline-xf
+(defn http-repo-to-api-repo [http-repo-url]
+    (clojure.string/replace-first http-repo-url #"github.com" "api.github.com/repos"))
+
+(def catcat (comp cat cat))
+
+(def repository-persisting-pipeline-xf
+    (comp
+        cat
+        (map :node)
+        (map :url)
+        (map http-repo-to-api-repo)
+        (execute #(persist-repo %))))
+
+(def repository-processing-pipeline-xf
     (comp
         (map get-issues-url-from-repo-model)
-        (map #(add-url-query % {:state "all"}))             ; Without stating "all" we will only get open issues
-        (map paginated-iteration)                           ; Create a paginated iterator over all issues in this repo
-        cat                                                 ; Iterate over the issues pagination
-        cat                                                 ; Each pagination gives us a list of issues, iterate over them
-        (parse-then-persist adapters/parse-user-from-issue) ; Save the user of each issue
-        (parse-then-persist adapters/parse-issue)           ; Save the issue
-        (map :comments_url)
-        (map paginated-iteration)                           ; Create a paginated iterator over all comments in this issue
-        cat                                                 ; Iterate over the comment pagination
-        cat                                                 ; Each pagination gives us a list of comments, iterate over them
-        (parse-then-persist adapters/parse-user-from-comment) ; Save the user of each comment
-        (parse-then-persist adapters/parse-comment)))       ; Save the comment
+
+        ; Without stating "all" we will only get open issues
+        (map #(add-url-query % {:state "all"}))
+
+        ; Create a paginated iterator over all issues in this repo
+        (map paginated-iteration)
+
+        ; Fully expand the pagination (a list of lists of issues) to issues
+        catcat
+
+        ; Save the user of each issue
+        (parse-then-persist! adapters/parse-user-from-issue)
+
+        ; Convert to an issue model and persist
+        (map #(-> %
+                  adapters/parse-issue
+                  db/persist-record!))
+
+        ; Get the comments url so we can query it
+        (map :issue/comments-url)
+
+        ; Create a paginated iterator over all comments in this issue
+        (map paginated-iteration)
+
+        ; nil at the front of the iteration since the very first comment does not have a parent
+        (map #(lazy-concat [[[nil]] %]))
+
+        ; Fully expand the pagination (a list of lists of comments) to comments
+        catcat
+
+        ; Save the user of each comment
+        (parse-then-persist! adapters/parse-user-from-comment)
+
+        ; Group all comments as pairs with their parent comments to associate them
+        (x/partition 2 1 (x/into []))
+
+        (map #(-> %
+                  adapters/parse-comment-with-parent
+                  db/persist-record!))
+        ))
 
 (defn process-repository-models [repo-models]
-    (transduce repo-pipeline-xf (constantly nil) repo-models))
+    (transduce repository-processing-pipeline-xf (constantly nil) repo-models))
+
+(defn scrape-repositories []
+    (transduce repository-persisting-pipeline-xf (constantly nil) (paginated-graphql-iteration)))
 
 (comment
-    (def repo (get-last-processed-repository))
 
-    (into [] (x/window 2 + -) (range 16))
+    (scrape-repositories)
+
+    (require '[flow-storm.api :as fs])
+
+    (fs/local-connect)
+
+    (get-issues)
+
+    (def repo (get-last-processed-repository!))
+
+    (db/register-db!)
 
     repo
 
-    (def new-repo-url "https://api.github.com/repos/cgrand/xforms")
+    (def foo (into [] test-xf repo))
+
+    foo
+
+    (gungnir.changeset/create (first foo))
+
+    (def com (assoc (first foo) :comment/parent-comment nil))
+
+    (:changeset/errors (gungnir.database/insert! (gungnir.changeset/create (second foo))))
+
+    (db/persist-record! (first foo))
+
+    comments
+
+    (second comments)
+
+    (count comments)
+
+    (transaction/execute!)
+
+    (defn test-two-param [[foo bar]]
+        (println foo bar))
+
+    (test-two-param [1 2])
+
+    (def foo [1, 2, 3, 4, 5])
+
+    (partition 2 1 foo)
+
+    (def lazyfn #(lazy-cat [nil] %))
+
+    (def foo (lazyfn (range 10)))
+
+    (def foo (lazy-cat [nil] (range 8)))
+
+    (sequence (x/partition 2 1 (x/into [])) foo)
+
+    (into [] (x/partition 2 1 (repeat nil) (x/into [])) (range 9))
+    )
+
+(comment
+    (def repo (get-last-processed-repository!))
+
+    repo
+
+    (def my-map {:foo 1 :bar {:foo 2 :baz 3}})
+
+    (:baz (:bar my-map))
+
+    (-> my-map
+        :bar
+        :baz)
+
+    (into [] (x/window 2 + -) (range 16))
+
+    (into [] (map inc) (range 16))
+
+    :foo
+
+    repo
+
+    (make-request "https://api.github.com/repos/dakrone/cheshire/issues" {:query-params {"state" "closed"}})
+
+    (parse-json (:body (make-request "https://api.github.com/repositories/1516467/issues?state=all&page=2")))
+
+    (generate-string {:query {}})
+
+    (def viewer-ql "
+{
+  \"query\": \"query { viewer { login } }\"
+}
+    ")
+
+    (def repository-query (load-resource "repository-query.graphql"))
+
+    (clojure.string/replace repository-query #"\"" "\\\"")
+
+    repository-query
+
+    (def query-foo (clojure.string/replace (load-resource "repository-query.graphql") #"\r\n|\n|\r" ""))
+
+    query-foo
+
+    (parse-json (:body (make-github-graphql-request (load-resource "repository-query.graphql"))))
+
+    (def first-query (make-request "https://api.github.com/graphql" {:method :post
+                                                                     :body   (format "{\"query\":\n\"%s\" }" query-foo)}))
+
+    (parse-json (:body first-query))
+
+    (first (def new-repo-url "https://api.github.com/repos/district0x/graphql-query"))
+
+    (def new-repo-url "https://api.github.com/repos/dakrone/cheshire")
 
     (persist-repo new-repo-url)
 
@@ -177,9 +389,9 @@
                                          sanitize-github-url)]
                         issues-url))
 
-    (get-github-url issues-url)
+    (make-request issues-url)
 
-    (when-let [repo (not-empty (get-last-processed-repository))]
+    (when-let [repo (not-empty (get-last-processed-repository!))]
         (println repo)
         (println "huh"))
 
@@ -193,11 +405,11 @@
 
     (def events-url "https://api.github.com/repos/devlooped/moq/issues/1374/events")
 
-    (count (parse-json (:body (get-github-url comments-url))))
+    (count (parse-json (:body (make-request comments-url))))
 
-    (get-github-url "https://api.github.com/users")
+    (make-request "https://api.github.com/users")
 
-    (def comments (get-github-url comments-url))
+    (def comments (make-request comments-url))
 
     comments
 
