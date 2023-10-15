@@ -1,0 +1,8 @@
+{:up
+ [[:table/create {:table :spicy-issue}
+   [:column/add
+    [:id {:primary-key true :references :issue/id} :string]
+    [:rating :int]
+    [:gungnir/timestamps]]]]
+ :down
+ [[:table/drop :spicy-issue]]}

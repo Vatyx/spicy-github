@@ -1,0 +1,8 @@
+{:up
+ [[:table/create {:table :spicy-comment}
+   [:column/add
+    [:id {:primary-key true :references :comment/id} :string]
+    [:rating :int]
+    [:gungnir/timestamps]]]]
+ :down
+ [[:table/drop :spicy-comment]]}

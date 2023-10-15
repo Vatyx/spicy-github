@@ -5,18 +5,26 @@
               [gungnir.migration]
               [gungnir.transaction :as transaction]
               [gungnir.query :as q]
-              [taoensso.timbre :as timbre] 
+              [taoensso.timbre :as timbre]
               [honey.sql]
               [honeysql.core]
               [honey.sql.helpers :as helpers]
-              [spicy-github.util :refer :all]))
+              [spicy-github.util :refer :all]
+              [spicy-github.env :refer [spicy-env]]))
+
+(def db-server-name (spicy-env :rds-hostname))
+(def db-port (Integer/parseInt (spicy-env :rds-port)))
+(def db-name (spicy-env :rds-db-name))
+(def db-username (spicy-env :rds-username))
+(def db-password (spicy-env :rds-password))
 
 (def db-config
     {:adapter       "postgresql"
-     :database-name "spicy-github"
-     :server-name   "localhost"
-     :username      "postgres"
-     :password      ""})
+     :database-name db-name
+     :server-name   db-server-name
+     :username      db-username
+     :password      db-password
+     :port-number   db-port})
 
 (defn register-db! [] (gungnir.database/make-datasource! db-config))
 
