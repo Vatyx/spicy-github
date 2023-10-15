@@ -1,10 +1,10 @@
 (ns spicy-github.api
     (:require-macros [cljs.core.async.macros :refer [go]]
-                     [spicy-github.env :refer [cljs-env]])
+                     [spicy-github.env :refer [spicy-env]])
     (:require [cljs-http.client :as http]
               [cljs.core.async :refer [<!]]))
 
-(def spicy-endpoint (cljs-env :spicy-endpoint))
+(def spicy-endpoint (spicy-env :spicy-endpoint))
 
 (defn- get-n-issues-before-endpoint
     ([] (get-n-issues-before-endpoint (.now js/Date)))

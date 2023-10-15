@@ -10,7 +10,7 @@
               [cheshire.core :refer :all]
               [clojure.instant :as instant]
               [clojure.pprint]
-              [spicy-github.env :refer [cljs-env]])
+              [spicy-github.env :refer [spicy-env]])
     (:import (java.util Date)))
 
 (defn- landing-page [_]
@@ -37,7 +37,7 @@
            (route/resources "/")
            (route/not-found "Not Found"))
 
-(def app (let [reload-server (parse-boolean (cljs-env :reload-server))]
+(def app (let [reload-server (parse-boolean (spicy-env :reload-server))]
              (if (nil? reload-server)
                  (wrap-defaults app-routes site-defaults)
                  (if reload-server
