@@ -25,9 +25,9 @@
                                                                                    %
                                                                                    (with-out-str (clojure.pprint/pprint %))))))]))
 
-(defn load-repository-query [] (load-resource "repository-query.graphql"))
-
 (timbre/set-config! new-config)
+
+(defn load-repository-query [] (load-resource "repository-query.graphql"))
 
 (defn load-github-tokens []
     (-> (io/resource "token.edn")
