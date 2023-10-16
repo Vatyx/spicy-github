@@ -1,8 +1,13 @@
 (ns spicy-github.spicy-rating
     (:gen-class)
-    (:require [clojure.java.io :as io]
+    (:require [clojure.instant :as instant]
+              [clojure.java.io :as io]
               [clojure.edn :as edn]
-              [spicy-github.util :refer :all]))
+              [spicy-github.util :refer :all]
+        ; this must be here so our models get initialized
+              [spicy-github.model :as model]
+              [spicy-github.db :as db])
+    (:import (java.util Date)))
 
 (defn- load-emoji-config! []
     (-> (io/resource "emoji-rating-config.edn")
@@ -13,16 +18,18 @@
 (def emoji-config (load-emoji-config!))
 (def max-score 33)
 (def comment-offset (/ 50 33))
+(def db-page-size 100)
 
 (defn- rate-emojis [reactions-payload]
     (min max-score
          (int
              (/
                  (reduce +
-                         (map #((let [maybe-bias ((key %1) emoji-config)
-                                      bias (if (nil? maybe-bias) 0 maybe-bias)
-                                      score (* bias (val %1))]
-                                    score))
+                         (map (fn [[emoji total]]
+                                  (let [maybe-bias ((keyword emoji) emoji-config)
+                                        bias (if (nil? maybe-bias) 0 maybe-bias)
+                                        score (if (= 0 bias) 0 (* bias total))]
+                                      score))
                               (seq reactions-payload)))
                  100))))
 
@@ -48,3 +55,27 @@
         (int (+
                  (* comment-offset (rate-emojis reactions-json))
                  (* comment-offset (rate-total-reactions reactions-json))))))
+
+(defn map-and-rate-issue [issue]
+    {:spicy-issue/id     (:issue/id issue)
+     :spicy-issue/rating (rate-issue issue)})
+
+(defn map-and-rate-comment [comment]
+    {:spicy-comment/id     (:comment/id comment)
+     :spicy-comment/rating (rate-comment comment)})
+
+(defn- forever-rate! [get-fn! map-fn update-at-fn]
+    (loop [current-time (new Date)]
+        (let [records (get-fn! db-page-size current-time)
+              spicy-records (doall (map map-fn records))]
+            (doall (map db/persist-record! spicy-records))
+            (Thread/sleep (int (rand 5000)))
+            (if (< (count records) db/default-page-size)
+                (recur (new Date))
+                (recur (update-at-fn (last records)))))))
+
+(defn forever-rate-issues! []
+    (forever-rate! db/get-n-latest-issues-before! map-and-rate-issue :issue/updated-at))
+
+(defn forever-rate-comments! []
+    (forever-rate! db/get-n-latest-comments-before! map-and-rate-comment :comment/updated-at))

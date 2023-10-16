@@ -9,6 +9,8 @@
               [honey.sql]
               [honeysql.core]
               [honey.sql.helpers :as helpers]
+        ; this must be here so our models get initialized
+              [spicy-github.model :as model]
               [spicy-github.util :refer :all]
               [spicy-github.env :refer [spicy-env]]))
 
@@ -62,9 +64,7 @@
                  (if (equality-check? existing inputRecord)
                      existing
                      (gungnir.database/update! (clean-record existing diff) datasource))
-                 )
-             ))))
-
+                 )))))
 
 (defn persist-record! [record]
     (timbre/debug "Persisting Record: " record)
@@ -120,5 +120,9 @@
 (defn get-n-latest-comments!
     ([] (get-n-latest! :comment query-comment-relations!))
     ([n] (get-n-latest! :comment query-comment-relations! n)))
+
+(defn get-n-latest-comments-before!
+    ([before] (get-n-latest-before! :comment query-comment-relations! before))
+    ([n before] (get-n-latest-before! :comment query-comment-relations! n before)))
 
 (register-db!)
