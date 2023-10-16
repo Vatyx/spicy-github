@@ -29,16 +29,16 @@
 
 (defn load-repository-query [] (load-resource "repository-query.graphql"))
 
-(defn load-github-tokens []
+(defn load-github-tokens! []
     (-> (io/resource "token.edn")
         io/file
         slurp
         edn/read-string
         :github-token))
 
-(def get-github-token
+(def get-github-token!
     (let [counter (atom 0)
-          tokens (load-github-tokens)]
+          tokens (load-github-tokens!)]
         (fn []
             (swap! counter inc)
             (nth tokens (mod @counter (count tokens))))))
@@ -59,7 +59,7 @@
     (timbre/debug "Making Request: " url)
     (request-retry (merge
                  {:url url}
-                 {:headers {"Authorization" (str "Bearer " (get-github-token))}}
+                 {:headers {"Authorization" (str "Bearer " (get-github-token!))}}
                  {:method :get}
                  params)
                    5))
