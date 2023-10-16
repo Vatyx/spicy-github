@@ -102,12 +102,11 @@
                       (helpers/limit n)
                       (q/all! table)))))))
 
-
 (defn query-comment-relations! [comment]
-    (q/load! comment :comment/user))
+    (q/load! comment :comment/user :comment/spicy-comment))
 
 (defn query-issue-relations! [issue]
-    (let [mapped-issue (q/load! issue :issue/user :issue/comments)]
+    (let [mapped-issue (q/load! issue :issue/user :issue/comments :issue/spicy-issue)]
         (assoc mapped-issue :issue/comments (map query-comment-relations! (:issue/comments mapped-issue)))))
 
 (defn get-n-latest-issues!

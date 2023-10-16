@@ -3,8 +3,7 @@
     (:require [cheshire.core :refer :all]
               [honey.sql.helpers :as h]
               [spicy-github.util :refer :all]
-              [gungnir.query :as q])
-    (:import (java.sql Date)))
+              [gungnir.query :as q]))
 
 (defn get-issue-id-for-issue-url [issue-url]
     (-> (h/where [:= :issue/url issue-url])
@@ -76,23 +75,29 @@
 
 (defn sanitize-comment-for-api [comment]
     (let [parent-comment-id (:comment/parent-comment comment)
-          mapped-comment {:comment/id   (:comment/id comment)
-                          :comment/body (:comment/body comment)
-                          :comment/user (sanitize-user-for-api (:comment/user comment))
-                          }]
+          mapped-comment {:comment/id           (:comment/id comment)
+                          :comment/body         (:comment/body comment)
+                          :comment/user         (sanitize-user-for-api (:comment/user comment))
+                          :comment/spicy-rating (if
+                                                    (nil? (:comment/spicy-comment comment))
+                                                    0
+                                                    (-> comment :comment/spicy-comment :spicy-comment/rating))}]
         (if (nil? parent-comment-id)
             mapped-comment
             (conj mapped-comment {:comment/parent-comment parent-comment-id}))))
 
 (defn sanitize-issue-for-api [issue]
-    {:issue/id         (:issue/id issue)
-     :issue/url        (:issue/url issue)
-     :issue/title      (:issue/title issue)
-     :issue/body       (:issue/body issue)
-     :issue/user       (sanitize-user-for-api (:issue/user issue))
-     :issue/comments   (map sanitize-comment-for-api (:issue/comments issue))
-     :issue/updated-at (:issue/updated-at issue)
-     })
+    {:issue/id           (:issue/id issue)
+     :issue/url          (:issue/url issue)
+     :issue/title        (:issue/title issue)
+     :issue/body         (:issue/body issue)
+     :issue/user         (sanitize-user-for-api (:issue/user issue))
+     :issue/comments     (map sanitize-comment-for-api (:issue/comments issue))
+     :issue/updated-at   (:issue/updated-at issue)
+     :issue/spicy-rating (if
+                             (nil? (:issue/spicy-issue issue))
+                             0
+                             (-> issue :issue/spicy-issue :spicy-issue/rating))})
 
 (comment
 
