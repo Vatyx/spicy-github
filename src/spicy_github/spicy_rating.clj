@@ -43,24 +43,24 @@
 (defn- rate-total-comments [issue]
     (min max-score (int (/ (:issue/comment-count issue) 30))))
 
-(defn rate-issue [issue]
+(defn- rate-issue [issue]
     (let [reactions-json (:reactions (parse-json (:issue/github-json-payload issue)))]
         (+
             (rate-emojis reactions-json)
             (rate-total-comments issue)
             (rate-total-reactions reactions-json))))
 
-(defn rate-comment [comment]
+(defn- rate-comment [comment]
     (let [reactions-json (:reactions (parse-json (:comment/github-json-payload comment)))]
         (int (+
                  (* comment-offset (rate-emojis reactions-json))
                  (* comment-offset (rate-total-reactions reactions-json))))))
 
-(defn map-and-rate-issue [issue]
+(defn- map-and-rate-issue [issue]
     {:spicy-issue/id     (:issue/id issue)
      :spicy-issue/rating (rate-issue issue)})
 
-(defn map-and-rate-comment [comment]
+(defn- map-and-rate-comment [comment]
     {:spicy-comment/id     (:comment/id comment)
      :spicy-comment/rating (rate-comment comment)})
 
