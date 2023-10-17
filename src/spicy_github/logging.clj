@@ -59,8 +59,10 @@
     (shift-log-period log path prev-cal)
     (clean-old-logs! calendar-cutoff))
 
+; Copy-pasta
 (defn- log-cal [date] (let [now (Calendar/getInstance)] (.setTime now date) now))
 
+; Copy-pasta
 (defn- prev-period-end-cal [date pattern look-back]
     (let [cal (log-cal date)
           offset (case pattern
@@ -75,6 +77,7 @@
         (.set cal Calendar/MILLISECOND 999)
         cal))
 
+; Copy-pasta
 (defn- rotating-rolling-appender
     "Returns a Rolling file appender. Opts:
       :pattern - frequency of rotation, e/o {:daily :weekly :monthly}.
