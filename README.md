@@ -8,6 +8,10 @@ Download from http://example.com/FIXME.
 
 ## Dev
 
+To run
+
+    $ lein run
+
 To compile ClojureScript for dev
 
     $ lein cljsbuild once
