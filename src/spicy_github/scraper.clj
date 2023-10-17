@@ -209,3 +209,19 @@
 
 (defn scrape-repositories []
     (transduce repository-persisting-pipeline-xf (constantly nil) (paginated-graphql-iteration)))
+
+(comment
+    ; How to run scraper
+
+    ; Get repo url
+    (def repo-url "insert repo url")
+
+    ; Persist it to db
+    (persist-repo repo-url)
+
+    ; Fetch the last 10 unprocessed repos
+    (def repos-model (scraper/get-last-processed-repository!))
+
+    ; Process them
+    (process-repository-models repo)
+)
