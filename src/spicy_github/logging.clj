@@ -56,8 +56,9 @@
         (file-seq (clojure.java.io/file log-path))))
 
 (defn- maintain-logs! [log path prev-cal calendar-cutoff]
-    (shift-log-period log path prev-cal)
-    (clean-old-logs! calendar-cutoff))
+    (let [latest-logs (shift-log-period log path prev-cal)]
+        (clean-old-logs! calendar-cutoff)
+        latest-logs))
 
 ; Copy-pasta
 (defn- log-cal [date] (let [now (Calendar/getInstance)] (.setTime now date) now))
