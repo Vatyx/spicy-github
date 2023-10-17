@@ -107,7 +107,7 @@
                          (catch IOException _))))))})
 
 (timbre/merge-config! {:min-level  (keyword log-level)
-                       :appenders  {:rotating-rotating-daily (rotating-rolling-appender)}
+                       ;:appenders  {:rotating-rotating-daily (rotating-rolling-appender)}
                        :middleware [(fn [data]
                                         (update data :vargs (partial mapv
                                                                      #(clojure.string/trim-newline

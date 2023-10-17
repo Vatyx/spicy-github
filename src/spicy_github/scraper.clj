@@ -35,15 +35,15 @@
             (swap! counter inc)
             (nth tokens (mod @counter (count tokens))))))
 
-(def request (throttle-fn client/request 9500 :hour))
+(def request (throttle-fn client/request 9300 :hour))
 
 (defn request-retry [payload retry-count]
     (let [request-fn #(request payload)]
-        (if (zero? retry-count)
+        (try
             (request-fn)
-            (try
-                (request-fn)
-                (catch Exception e
+            (catch Exception e
+                (if (zero? retry-count)
+                    nil
                     (request-retry payload (dec retry-count)))))))
 
 (defn make-request [url & [params]]
@@ -66,8 +66,11 @@
                                                         :body   formatted-body})))
 
 (defn get-repository-query
-    ([] (format (load-repository-query) ""))
-    ([end-cursor] (format (load-repository-query) (format "after: \"%s\"" end-cursor))))
+    ([min-stars max-stars] (get-repository-query min-stars max-stars ""))
+    ([min-stars max-stars end-cursor] (let [end-cursor-string (if (not (empty? end-cursor))
+                                                                  (format "after: \"%s\"" end-cursor)
+                                                                  "")]
+                                          (format (load-repository-query) (str min-stars) (str max-stars) end-cursor-string))))
 
 (defn paginated-iteration [paginated-url]
     (iteration #(make-request %1)
@@ -81,19 +84,19 @@
                :initk paginated-url
                :somef :body))
 
-(defn paginated-graphql-iteration []
+(defn paginated-graphql-iteration [min-stars max-stars]
     (iteration #(-> %
                     make-github-graphql-request
                     :body
                     parse-json
                     :data
                     :search)
-               :kf #(-> %
-                        :pageInfo
-                        :endCursor
-                        get-repository-query)
+               :kf #(->> %
+                         :pageInfo
+                         :endCursor
+                         (get-repository-query min-stars max-stars))
                :vf :edges
-               :initk (get-repository-query)
+               :initk (get-repository-query min-stars max-stars)
                :somef #(-> %
                            :edges
                            not-empty)))
@@ -112,6 +115,18 @@
         (h/limit 10)
         (q/all! :repository)))
 
+(defn get-last-inserted-repository! []
+    (-> (h/order-by [:repository/created-at :desc])
+        (h/limit 1)
+        (q/all! :repository)
+        first))
+
+(defn get-repository-stars [repository]
+    (-> repository
+        :repository/github-json-payload
+        parse-json
+        :stargazers_count))
+
 (defn get-issues []
     (q/all! :issue))
 
@@ -129,7 +144,7 @@
         :comments_url))
 
 (defn persist-repo [repo-url]
-    (-> repo-url
+    (some-> repo-url
         make-request
         :body
         parse-json
@@ -198,8 +213,24 @@
 (defn process-repository-models [repo-models]
     (transduce repository-processing-pipeline-xf (constantly nil) repo-models))
 
-(defn scrape-repositories []
-    (transduce repository-persisting-pipeline-xf (constantly nil) (paginated-graphql-iteration)))
+(defn scrape-repositories [min-stars max-stars]
+    (timbre/debug (str "Scraping Repositories with stars between " min-stars " and " max-stars))
+    (transduce repository-persisting-pipeline-xf (constantly nil) (paginated-graphql-iteration min-stars max-stars)))
+
+(defn scrape-repositories-with-star-step [starting-star-count ending-star-count star-step]
+    (loop [max-stars starting-star-count
+           min-stars (- max-stars star-step)]
+        (scrape-repositories min-stars max-stars)
+        (if (< max-stars ending-star-count)
+            nil
+            (recur (- max-stars star-step)
+                   (- min-stars star-step)))))
+
+(defn scrape-all-repositories []
+    (scrape-repositories 100000 400000)
+    (scrape-repositories 50000 100000)
+    (scrape-repositories-with-star-step 50000 20000 2000)
+    (scrape-repositories-with-star-step 10000 1000 1000))
 
 (comment
     ; How to run scraper
@@ -215,4 +246,4 @@
 
     ; Process them
     (process-repository-models repo)
-)
+    )

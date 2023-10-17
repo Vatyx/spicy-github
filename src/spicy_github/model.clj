@@ -13,6 +13,7 @@
      [:repository/id {:primary-key true} string?]
      [:repository/url string?]
      [:repository/issues-url {:before-save [:sanitize-github-url]} string?]
+     [:repository/stars int?]
      [:repository/processed-at inst?]
      [:repository/github-json-payload string?]
      [:repository/created-at {:auto true} inst?]

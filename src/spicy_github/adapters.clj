@@ -23,6 +23,7 @@
     {:repository/id                  (-> r :id str)
      :repository/url                 (:url r)
      :repository/issues-url          (-> r :issues_url sanitize-github-url)
+     :repository/stars               (:stargazers_count r)
      :repository/processed-at        (java.sql.Date. 0)
      :repository/github-json-payload (generate-string r)})
 
