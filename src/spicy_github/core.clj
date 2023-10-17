@@ -1,8 +1,10 @@
 (ns spicy-github.core
   (:gen-class)
     (:require
-     [ring.adapter.jetty :as jetty] 
-     [spicy-github.db :as db] 
+     [ring.adapter.jetty :as jetty]
+        ; Required import to force db and model registration
+     [spicy-github.db :as db]
+     [spicy-github.logging :as logging]
      [spicy-github.api :as app]
      [spicy-github.spicy-rating :as rating]))
 

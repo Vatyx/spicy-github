@@ -5,6 +5,7 @@
               [spicy-github.model]
               [spicy-github.util :refer :all]
               [spicy-github.adapters :as adapters]
+              [spicy-github.logging :as logging]
               [malli.dev.pretty]
               [clj-http.client :as client]
               [cheshire.core :refer :all]
@@ -12,20 +13,11 @@
               [hiccup.util]
               [gungnir.model]
               [gungnir.query :as q]
-              [gungnir.transaction :as transaction]
               [clj-time.core :as t]
               [honey.sql.helpers :as h]
               [net.cgrand.xforms :as x]
               [taoensso.timbre :as timbre]
               [throttler.core :refer [throttle-fn]]))
-
-(def new-config (assoc timbre/*config* :middleware
-                                       [(fn [data]
-                                            (update data :vargs (partial mapv #(if (string? %)
-                                                                                   %
-                                                                                   (with-out-str (clojure.pprint/pprint %))))))]))
-
-(timbre/set-config! new-config)
 
 (defn load-repository-query [] (load-resource "repository-query.graphql"))
 
@@ -52,8 +44,7 @@
             (try
                 (request-fn)
                 (catch Exception e
-                    (request-retry payload (dec retry-count))
-                    )))))
+                    (request-retry payload (dec retry-count)))))))
 
 (defn make-request [url & [params]]
     (timbre/debug "Making Request: " url)
