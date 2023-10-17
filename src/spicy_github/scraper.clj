@@ -43,7 +43,7 @@
             (swap! counter inc)
             (nth tokens (mod @counter (count tokens))))))
 
-(def request (throttle-fn client/request 4800 :hour))
+(def request (throttle-fn client/request 9500 :hour))
 
 (defn request-retry [payload retry-count]
     (let [request-fn #(request payload)]
@@ -57,11 +57,13 @@
 
 (defn make-request [url & [params]]
     (timbre/debug "Making Request: " url)
+    (when (some? params)
+        (timbre/debug params))
     (request-retry (merge
-                 {:url url}
-                 {:headers {"Authorization" (str "Bearer " (get-github-token!))}}
-                 {:method :get}
-                 params)
+                       {:url url}
+                       {:headers {"Authorization" (str "Bearer " (get-github-token!))}}
+                       {:method :get}
+                       params)
                    5))
 
 (defn make-github-graphql-request [query]
@@ -194,6 +196,8 @@
 
         ; Group all comments as pairs with their parent comments to associate them
         (x/partition 2 1 (x/into []))
+
+        (filter #(some? (get % 1)))
 
         (map #(-> %
                   adapters/parse-comment-with-parent

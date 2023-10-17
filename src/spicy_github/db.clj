@@ -56,6 +56,10 @@
      (persist! changeset gungnir.database/*datasource* query-by-id! clean-record equality-check?))
     ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
      (let [initial-results (gungnir.database/insert! changeset datasource)]
+
+         (when (some? (:changeset/errors initial-results))
+             (timbre/error "Failed to insert: " (:changeset/errors initial-results)))
+
          (if (nil? (get initial-results :changeset/errors))
              (timbre/spy :debug "Successfully inserted: " (:changeset/result changeset))
              (let [diff (get changeset :changeset/diff)

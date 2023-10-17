@@ -38,10 +38,12 @@
      [:comment/parent-comment {:optional true} string?]
      [:comment/url string?]
      [:comment/body string?]
+     [:comment/total-reactions int?]
      [:comment/comment-creation-time inst?]
      [:comment/comment-updated-time {:optional true} inst?]
      [:comment/issue-id {:optional true} string?]
      [:comment/user-id {:optional true} string?]
+     [:comment/reaction-json string?]
      [:comment/github-json-payload string?]
      [:comment/created-at {:auto true} inst?]
      [:comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
@@ -63,6 +65,7 @@
      [:issue/issue-updated-time {:optional true} inst?]
      [:issue/user-id {:optional true} string?]
      [:issue/repository-id {:optional true} string?]
+     [:issue/reaction-json string?]
      [:issue/github-json-payload string?]
      [:issue/created-at {:auto true} inst?]
      [:issue/updated-at {:before-save [:get-current-time] :optional true} inst?]])
@@ -71,7 +74,7 @@
     [:map
      {:belongs-to {:spicy-issue/issue {:model :issue :foreign-key :spicy-issue/id}}}
      [:spicy-issue/id {:primary-key true} string?]
-     [:spicy-issue/rating int?]
+     [:spicy-issue/rating float?]
      [:spicy-issue/created-at {:auto true} inst?]
      [:spicy-issue/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
@@ -79,7 +82,7 @@
     [:map
      {:belongs-to {:spicy-comment/comment {:model :comment :foreign-key :spicy-comment/id}}}
      [:spicy-comment/id {:primary-key true} string?]
-     [:spicy-comment/rating int?]
+     [:spicy-comment/rating float?]
      [:spicy-comment/created-at {:auto true} inst?]
      [:spicy-comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 

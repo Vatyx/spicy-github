@@ -9,6 +9,8 @@
     [:comment-updated-time {:optional true} :timestamp]
     [:issue-id {:references :issue/id :optional true} :string]
     [:user-id {:references :github-user/id :optional true} :string]
+    [:total-reactions :int]
+    [:reaction-json :string]
     [:github-json-payload :string]
     [:gungnir/timestamps]]]]
  :down

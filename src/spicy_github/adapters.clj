@@ -22,6 +22,7 @@
 (defn parse-repository [r]
     {:repository/id                  (-> r :id str)
      :repository/url                 (:url r)
+     :repository/issues-url          (-> r :issues_url sanitize-github-url)
      :repository/processed-at        (java.sql.Date. 0)
      :repository/github-json-payload (generate-string r)})
 
@@ -35,6 +36,12 @@
         :user
         parse-user))
 
+(defn parse-reactions-from-json [json]
+    (-> json
+        :reactions
+        (dissoc :url :total_count)
+        generate-string))
+
 (defn parse-issue [issue-json]
     {:issue/id                  (get-id-as-string issue-json)
      :issue/url                 (:url issue-json)
@@ -47,6 +54,7 @@
      :issue/issue-creation-time (:created_at issue-json)
      :issue/issue-updated-time  (:updated_at issue-json)
      :issue/user-id             (-> issue-json :user :id str)
+     :issue/reaction-json       (parse-reactions-from-json issue-json)
      :issue/github-json-payload (generate-string issue-json)})
 
 (defn parse-comment [comment-json]
@@ -57,6 +65,8 @@
      :comment/comment-updated-time  (:updated_at comment-json)
      :comment/issue-id              (-> comment-json :issue_url get-issue-id-for-issue-url)
      :comment/user-id               (-> comment-json :user :id str)
+     :comment/total-reactions       (-> comment-json :reactions :total_count int)
+     :comment/reaction-json         (parse-reactions-from-json comment-json)
      :comment/github-json-payload   (generate-string comment-json)})
 
 (defn parse-comment-with-parent [[parent-json comment-json]]

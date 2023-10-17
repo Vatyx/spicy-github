@@ -4,15 +4,14 @@
               [clojure.java.io :as io]
               [clojure.edn :as edn]
               [spicy-github.util :refer :all]
-        ; this must be here so our models get initialized
-              [spicy-github.model :as model]
+              [spicy-github.model :as model] ; this must be here so our models get initialized
               [spicy-github.db :as db])
-    (:import (java.util Date)))
+    (:import (java.util Date)
+             (gungnir.database RelationAtom)))
 
 (defn- load-emoji-config! []
-    (-> (io/resource "emoji-rating-config.edn")
-        io/file
-        slurp
+    (-> "emoji-rating-config.edn"
+        load-resource
         edn/read-string))
 
 (def emoji-config (load-emoji-config!))
@@ -26,8 +25,7 @@
              (/
                  (reduce +
                          (map (fn [[emoji total]]
-                                  (let [maybe-bias ((keyword emoji) emoji-config)
-                                        bias (if (nil? maybe-bias) 0 maybe-bias)
+                                  (let [bias ((keyword emoji) emoji-config 0)
                                         score (if (= 0 bias) 0 (* bias total))]
                                       score))
                               (seq reactions-payload)))

@@ -12,6 +12,7 @@
     [:issue-updated-time {:optional true} :timestamp]
     [:user-id {:references :github-user/id :optional true} :string]
     [:repository-id {:references :repository/id :optional true} :string]
+    [:reaction-json :string]
     [:github-json-payload :string]
     [:gungnir/timestamps]]]]
  :down

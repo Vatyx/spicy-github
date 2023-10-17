@@ -8,7 +8,6 @@
 
 (defn -main
     [& args]
-    (db/migrate-db!)
     (.start (Thread. rating/forever-rate-issues!))
     (.start (Thread. rating/forever-rate-comments!))
     (jetty/run-jetty app/app {:port 3000}))
