@@ -76,7 +76,9 @@
             (assoc comment-record :comment/parent-comment parent-id)
             comment-record)))
 
-(defn parse-user-from-comment [comment] (-> comment :user parse-user))
+(defn parse-user-from-comment [comment]
+    ((when (some? comment)
+         (-> comment :user parse-user))))
 (defn parse-user-from-issue [issue] (-> issue :user parse-user))
 
 (defn sanitize-user-for-api [user]
