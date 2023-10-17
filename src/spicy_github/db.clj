@@ -130,3 +130,4 @@
     ([n before] (get-n-latest-before! :comment query-comment-relations! n before)))
 
 (register-db!)
+(migrate-db!)
