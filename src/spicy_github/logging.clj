@@ -12,7 +12,8 @@
         [java.util Calendar]))
 
 ; We COULD use timbre environment variable, but I don't want to
-; since we're
+; since we're configuring the logging ourselves through overrides
+; that are *not* the timber environment variable.
 (def log-level (spicy-env :log-level))
 (def log-path "./logs/")
 (def log-name "spicy-log.log")
