@@ -57,17 +57,17 @@
     ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
      (let [input-record (:changeset/result changeset)
            diff (:changeset/diff changeset)]
-         (if-let [existing (query-by-id! input-record)]
-             (if (equality-check? existing input-record)
-                 existing
-                 (let [updated-record (gungnir.database/update! (clean-record existing diff) datasource)
-                       update-errors (:changeset/errors updated-record)]
-                     (if update-errors
-                         (throw (Exception. (str "Failed to update " (parse-json (:changeset/result updated-record)) " - " update-errors)))
-                         updated-record)))
-             (if-let [insert-errors (:changeset/errors (gungnir.database/insert! changeset datasource))]
-                 (throw (Exception. (str "Failed to insert " (parse-json (input-record)) - insert-errors)))
-                 input-record)))))
+         (let [existing (query-by-id! input-record)]
+             (if (some? existing)
+                 (if (equality-check? existing input-record)
+                     existing
+                     (let [updated-record (gungnir.database/update! (clean-record existing diff) datasource)
+                           update-errors (:changeset/errors updated-record)]
+                         (if (some? update-errors)
+                             input-record
+                             updated-record)))
+                 (let [_ (gungnir.database/insert! changeset datasource)]
+                     input-record))))))
 
 (defn persist-record! [record]
     (timbre/debug "Attempting to persist Record: " record)

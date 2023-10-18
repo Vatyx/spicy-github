@@ -103,25 +103,26 @@
                    prev-cal (prev-period-end-cal instant pattern 1)
                    delete-cal (prev-period-end-cal instant pattern num-logs)]
                  (try
-                     (when-let [log (io/file composite-log-path)]
+                     (when-let [log (atom (io/file composite-log-path))]
                          (try
                              (locking lock
-                                 (when-not (.exists log)
-                                     (io/make-parents log))
-                                 (if (.exists log)
-                                     (when (<= (.lastModified log) (.getTimeInMillis prev-cal))
-                                         (maintain-logs! log composite-log-path prev-cal delete-cal))
-                                     (.createNewFile log)))
-                             (spit composite-log-path (with-out-str output-str) :append true)
+                                 (when-not (.exists @log)
+                                     (io/make-parents @log))
+                                 (if (.exists @log)
+                                     (when (<= (.lastModified @log) (.getTimeInMillis prev-cal))
+                                         (maintain-logs! @log composite-log-path prev-cal delete-cal))
+                                     (swap! log (.createNewFile @log))))
+                             (with-open [w (io/writer @log :append true)]
+                                 (spit w (str output-str "\n")))
                              (catch Exception e (println (.getMessage e)))))
                      (catch Exception e (println (.getMessage e)))))))})
 
-(timbre/set-config! {:min-level  (keyword log-level)
-                     :appenders  {:rotating-rotating-daily (rotating-rolling-appender)}
-                     :middleware [(fn [data]
-                                      (update data :vargs
-                                              (partial mapv
-                                                       #(clojure.string/trim-newline
-                                                            (if (string? %)
-                                                                %
-                                                                (with-out-str (clojure.pprint/pprint %)))))))]})
+(timbre/merge-config! {:min-level  (keyword log-level)
+                       :appenders  {:rotating-rotating-daily (rotating-rolling-appender)}
+                       :middleware [(fn [data]
+                                        (update data :vargs
+                                                (partial mapv
+                                                         #(clojure.string/trim-newline
+                                                              (if (string? %)
+                                                                  %
+                                                                  (with-out-str (clojure.pprint/pprint %)))))))]})
