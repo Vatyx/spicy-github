@@ -111,7 +111,7 @@
                   db/persist-record-exception-safe!)))
 
 (defn get-oldest-processed-repository! []
-    (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (t/yesterday)))])
+    (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (-> 7 t/days t/ago)))])
         (h/order-by :repository/processed-at)
         (h/limit 1)
         (q/all! :repository)
