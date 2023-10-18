@@ -13,6 +13,7 @@
               [hiccup.util]
               [gungnir.model]
               [gungnir.query :as q]
+              [gungnir.transaction :as transaction]
               [clj-time.core :as t]
               [honey.sql.helpers :as h]
               [net.cgrand.xforms :as x]
@@ -107,7 +108,7 @@
 (defn parse-then-persist! [parser]
     (execute #(-> %
                   parser
-                  db/persist-record!)))
+                  db/persist-record-exception-safe!)))
 
 (defn get-last-processed-repository! []
     (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (t/yesterday)))])
@@ -145,11 +146,11 @@
 
 (defn persist-repo [repo-url]
     (some-> repo-url
-        make-request
-        :body
-        parse-json
-        adapters/parse-repository
-        db/persist-record!))
+            make-request
+            :body
+            parse-json
+            adapters/parse-repository
+            db/persist-record-exception-safe!))
 
 (defn http-repo-to-api-repo [http-repo-url]
     (clojure.string/replace-first http-repo-url #"github.com" "api.github.com/repos"))
@@ -183,7 +184,7 @@
         ; Convert to an issue model and persist
         (map #(-> %
                   adapters/parse-issue
-                  db/persist-record!))
+                  db/persist-record-exception-safe!))
 
         ; Get the comments url so we can query it
         (map :issue/comments-url)
@@ -207,8 +208,7 @@
 
         (map #(-> %
                   adapters/parse-comment-with-parent
-                  db/persist-record!))
-        ))
+                  db/persist-record-exception-safe!))))
 
 (defn process-repository-models [repo-models]
     (transduce repository-processing-pipeline-xf (constantly nil) repo-models))
