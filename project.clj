@@ -27,7 +27,7 @@
                    [stylefy "3.2.0"]
                    [stylefy/rum "3.0.0"]
                    [com.taoensso/timbre "6.3.1"]
-                   [com.fzakaria/slf4j-timbre "0.4.0"]
+                   ;[com.fzakaria/slf4j-timbre "0.4.0"]
                    [cljs-http "0.1.46"]]
     :main ^:skip-aot spicy-github.core
     :aot [spicy-github.core]

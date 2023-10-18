@@ -55,23 +55,22 @@
     ([changeset query-by-id! clean-record equality-check?]
      (persist! changeset gungnir.database/*datasource* query-by-id! clean-record equality-check?))
     ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
-     (let [initial-results (gungnir.database/insert! changeset datasource)]
-
-         (when (some? (:changeset/errors initial-results))
-             (timbre/error "Failed to insert: " (:changeset/errors initial-results)))
-
-         (if (nil? (get initial-results :changeset/errors))
-             (timbre/spy :debug "Successfully inserted: " (:changeset/result changeset))
-             (let [diff (get changeset :changeset/diff)
-                   inputRecord (get changeset :changeset/result)
-                   existing (query-by-id! inputRecord)]
-                 (if (equality-check? existing inputRecord)
+     (let [input-record (:changeset/result changeset)
+           diff (:changeset/diff changeset)]
+         (let [existing (query-by-id! input-record)]
+             (if (some? existing)
+                 (if (equality-check? existing input-record)
                      existing
-                     (gungnir.database/update! (clean-record existing diff) datasource))
-                 )))))
+                     (let [updated-record (gungnir.database/update! (clean-record existing diff) datasource)
+                           update-errors (:changeset/errors updated-record)]
+                         (if (some? update-errors)
+                             input-record
+                             updated-record)))
+                 (let [_ (gungnir.database/insert! changeset datasource)]
+                     input-record))))))
 
 (defn persist-record! [record]
-    (timbre/debug "Persisting Record: " record)
+    (timbre/debug "Attempting to persist Record: " record)
     (let [changeset (c/create record)
           model-key (:changeset/model changeset)
           id-key (namespace-key model-key :id)]
@@ -80,6 +79,12 @@
             (fn [record] (q/find! model-key (id-key record)))
             (fn [existing record] (c/create existing (c/cast record model-key)))
             model-equality?)))
+
+(defn persist-record-exception-safe! [record]
+    (try
+        (persist-record! record)
+        (catch Exception e (timbre/error (.getMessage e))
+                           record)))
 
 (def default-page-size 10)
 

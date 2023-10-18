@@ -17,8 +17,10 @@
 (def log-level (spicy-env :log-level))
 (def log-path "./logs/")
 (def log-name "spicy-log.log")
+(def log-name-count (count log-name))
 (def composite-log-path (str log-path log-name))
-(def date-format "yyyyMMdd")
+(def date-format "yyyy-MM-dd")
+(def date-format-count (count date-format))
 
 ; Most of this stuff is copy-paste from
 ; https://github.com/taoensso/timbre/blob/master/src/taoensso/timbre/appenders/community/rolling.clj
@@ -30,7 +32,7 @@
 
 ; Copy-pasta
 (defn- shift-log-period [log path prev-cal]
-    (let [postfix (-> "yyyyMMdd" SimpleDateFormat. (.format (.getTime prev-cal)))
+    (let [postfix (-> date-format SimpleDateFormat. (.format (.getTime prev-cal)))
           old-path (format "%s.%s" path postfix)
           old-log (io/file old-path)]
         (if (.exists old-log)
@@ -44,11 +46,17 @@
 
 (defn- delete-log-if-old! [file calendar-cutoff]
     (when (.exists file)
-        (let [log-year-month-day (take-last (count date-format) (.getName file))
-              log-date (.parse (SimpleDateFormat. date-format) (ParsePosition. 0) log-year-month-day)]
-            (when (not (nil? log-date))
-                (when (.before log-date (.getTime calendar-cutoff))
-                    (io/delete-file file))))))
+        (let [file-name (.getName file)]
+            (when (and
+                      (clojure.string/includes? file-name log-name)
+                      (>= (count file-name) (+ 1 log-name-count date-format-count)))
+                (let [formatted-date (subs file-name
+                                           (+ 1 log-name-count)
+                                           (+ 1 date-format-count log-name-count))]
+                    (when (>= (count formatted-date) (count date-format))
+                        (let [log-date (.parse (SimpleDateFormat. date-format) formatted-date (ParsePosition. 0))]
+                            (when (and (not (nil? log-date)) (.before log-date (.getTime calendar-cutoff)))
+                                (io/delete-file file)))))))))
 
 (defn- clean-old-logs! [calendar-cutoff]
     (run!
@@ -94,23 +102,27 @@
                    output-str (clojure.string/trim-newline (force output_))
                    prev-cal (prev-period-end-cal instant pattern 1)
                    delete-cal (prev-period-end-cal instant pattern num-logs)]
-                 (when-let [log (io/file composite-log-path)]
-                     (try
-                         (locking lock
-                             (when-not (.exists log)
-                                 (io/make-parents log))
-                             (if (.exists log)
-                                 (if (<= (.lastModified log) (.getTimeInMillis prev-cal))
-                                     (maintain-logs! log composite-log-path prev-cal delete-cal))
-                                 (.createNewFile log)))
-                         (spit composite-log-path (with-out-str output-str) :append true)
-                         (catch IOException _))))))})
+                 (try
+                     (when-let [log (atom (io/file composite-log-path))]
+                         (try
+                             (locking lock
+                                 (when-not (.exists @log)
+                                     (io/make-parents @log))
+                                 (if (.exists @log)
+                                     (when (<= (.lastModified @log) (.getTimeInMillis prev-cal))
+                                         (maintain-logs! @log composite-log-path prev-cal delete-cal))
+                                     (swap! log (.createNewFile @log))))
+                             (with-open [w (io/writer @log :append true)]
+                                 (spit w (str output-str "\n")))
+                             (catch Exception e (println (.getMessage e)))))
+                     (catch Exception e (println (.getMessage e)))))))})
 
 (timbre/merge-config! {:min-level  (keyword log-level)
-                       ;:appenders  {:rotating-rotating-daily (rotating-rolling-appender)}
+                       :appenders  {:rotating-rotating-daily (rotating-rolling-appender)}
                        :middleware [(fn [data]
-                                        (update data :vargs (partial mapv
-                                                                     #(clojure.string/trim-newline
-                                                                          (if (string? %)
-                                                                              %
-                                                                              (with-out-str (clojure.pprint/pprint %)))))))]})
+                                        (update data :vargs
+                                                (partial mapv
+                                                         #(clojure.string/trim-newline
+                                                              (if (string? %)
+                                                                  %
+                                                                  (with-out-str (clojure.pprint/pprint %)))))))]})

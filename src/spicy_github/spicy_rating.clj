@@ -1,13 +1,12 @@
 (ns spicy-github.spicy-rating
     (:gen-class)
-    (:require [clojure.instant :as instant]
-              [clojure.java.io :as io]
-              [clojure.edn :as edn]
+    (:require [clojure.edn :as edn]
               [spicy-github.util :refer :all]
-              [spicy-github.model :as model] ; this must be here so our models get initialized
-              [spicy-github.db :as db])
-    (:import (java.util Date)
-             (gungnir.database RelationAtom)))
+              [gungnir.transaction :as transaction]
+              [spicy-github.model :as model]                ; this must be here so our models get initialized
+              [spicy-github.db :as db]
+              [taoensso.timbre :as timbre])
+    (:import (java.util Date)))
 
 (defn- load-emoji-config! []
     (-> "emoji-rating-config.edn"
@@ -44,15 +43,15 @@
 (defn- rate-issue [issue]
     (let [reactions-json (:reactions (parse-json (:issue/github-json-payload issue)))]
         (float (+
-            (rate-emojis reactions-json)
-            (rate-total-comments issue)
-            (rate-total-reactions reactions-json)))))
+                   (rate-emojis reactions-json)
+                   (rate-total-comments issue)
+                   (rate-total-reactions reactions-json)))))
 
 (defn- rate-comment [comment]
     (let [reactions-json (:reactions (parse-json (:comment/github-json-payload comment)))]
         (float (+
-                 (* comment-offset (rate-emojis reactions-json))
-                 (* comment-offset (rate-total-reactions reactions-json))))))
+                   (* comment-offset (rate-emojis reactions-json))
+                   (* comment-offset (rate-total-reactions reactions-json))))))
 
 (defn- map-and-rate-issue [issue]
     {:spicy-issue/id     (:issue/id issue)
@@ -66,8 +65,9 @@
     (loop [current-time (new Date)]
         (let [records (get-fn! db-page-size current-time)
               spicy-records (doall (map map-fn records))]
-            (doall (map db/persist-record! spicy-records))
-            (Thread/sleep (int (rand 5000)))
+            (try (doall (map db/persist-record! spicy-records))
+                 (Thread/sleep (int (rand 5000)))
+                 (catch Exception e (timbre/error (.getMessage e))))
             (if (< (count records) db/default-page-size)
                 (recur (new Date))
                 (recur (update-at-fn (last records)))))))
