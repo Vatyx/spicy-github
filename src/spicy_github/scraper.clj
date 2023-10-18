@@ -110,17 +110,23 @@
                   parser
                   db/persist-record-exception-safe!)))
 
-(defn get-last-processed-repository! []
+(defn get-oldest-processed-repository! []
     (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (t/yesterday)))])
         (h/order-by :repository/processed-at)
-        (h/limit 10)
-        (q/all! :repository)))
+        (h/limit 1)
+        (q/all! :repository)
+        first))
 
 (defn get-last-inserted-repository! []
     (-> (h/order-by [:repository/created-at :desc])
         (h/limit 1)
         (q/all! :repository)
         first))
+
+(defn mark-repository-as-processed! [repository]
+    (-> repository
+        (assoc :repository/processed-at (java.sql.Date. (inst-ms (t/now))))
+        db/persist-record-exception-safe!))
 
 (defn get-repository-stars [repository]
     (-> repository
@@ -178,6 +184,9 @@
         ; Fully expand the pagination (a list of lists of issues) to issues
         catcat
 
+        ; Only save issues with 10 or more comments
+        (filter #(>= (:comments %) 10))
+
         ; Save the user of each issue
         (parse-then-persist! adapters/parse-user-from-issue)
 
@@ -210,8 +219,22 @@
                   adapters/parse-comment-with-parent
                   db/persist-record-exception-safe!))))
 
-(defn process-repository-models [repo-models]
-    (transduce repository-processing-pipeline-xf (constantly nil) repo-models))
+(defn process-repositories [repositories]
+    (timbre/debug "Processing repositories: " (->> repositories
+                                                   (map :repository/url)
+                                                   (clojure.string/join " ")))
+    (transduce repository-processing-pipeline-xf (constantly nil) repositories))
+
+(defn process-scraped-repositories []
+    (loop [latest-repository (get-oldest-processed-repository!)]
+        (if (nil? latest-repository)
+            (do
+                (timbre/debug "No new repositories to process, waiting...")
+                (Thread/sleep (int (rand 5000))))
+            (do
+                (process-repositories [latest-repository])
+                (mark-repository-as-processed! latest-repository)))
+        (recur (get-oldest-processed-repository!))))
 
 (defn scrape-repositories [min-stars max-stars]
     (timbre/debug (str "Scraping Repositories with stars between " min-stars " and " max-stars))
@@ -233,6 +256,33 @@
     (scrape-repositories-with-star-step 10000 1000 1000))
 
 (comment
+    (transduce repository-processing-pipeline-xf (constantly nil) repo-models)
+
+    (process-scraped-repositories)
+
+    (timbre/debug "huh")
+
+    (persist-repo "https://api.github.com/repos/devlooped/moq")
+
+    (persist-repo "https://api.github.com/repos/v8/v8")
+
+    (persist-repo "https://api.github.com/repos/vuejs/core")
+
+    (def repo (get-oldest-processed-repository!))
+
+    repo
+
+    (map :repository/url [repo])
+
+    (->> [repo]
+         (map :repository/url)
+         (clojure.string/join " "))
+
+    (mark-repository-as-processed! repo)
+
+    )
+
+(comment
     ; How to run scraper
 
     ; Get repo url
@@ -242,7 +292,7 @@
     (persist-repo repo-url)
 
     ; Fetch the last 10 unprocessed repos
-    (def repos-model (get-last-processed-repository!))
+    (def repos-model (get-oldest-processed-repository!))
 
     ; Process them
     (process-repository-models repo)

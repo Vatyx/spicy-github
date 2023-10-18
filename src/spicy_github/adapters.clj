@@ -78,8 +78,9 @@
             comment-record)))
 
 (defn parse-user-from-comment [comment]
-    ((when (some? comment)
-         (-> comment :user parse-user))))
+    (when (some? comment)
+        (-> comment :user parse-user)))
+
 (defn parse-user-from-issue [issue] (-> issue :user parse-user))
 
 (defn sanitize-user-for-api [user]

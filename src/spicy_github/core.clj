@@ -14,4 +14,5 @@
     (.start (Thread. rating/forever-rate-issues!))
     (.start (Thread. rating/forever-rate-comments!))
     (.start (Thread. scraper/scrape-all-repositories))
+    (.start (Thread. scraper/process-scraped-repositories))
     (jetty/run-jetty app/app {:port 3000}))
