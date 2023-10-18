@@ -223,7 +223,7 @@
     (timbre/debug "Processing repositories: " (->> repositories
                                                    (map :repository/url)
                                                    (clojure.string/join " ")))
-    (transduce repository-processing-pipeline-xf (constantly nil) repositories))
+    (execute-pipeline repository-processing-pipeline-xf repositories))
 
 (defn process-scraped-repositories []
     (loop [latest-repository (get-oldest-processed-repository!)]
@@ -238,7 +238,7 @@
 
 (defn scrape-repositories [min-stars max-stars]
     (timbre/debug (str "Scraping Repositories with stars between " min-stars " and " max-stars))
-    (transduce repository-persisting-pipeline-xf (constantly nil) (paginated-graphql-iteration min-stars max-stars)))
+    (execute-pipeline repository-persisting-pipeline-xf (paginated-graphql-iteration min-stars max-stars)))
 
 (defn scrape-repositories-with-star-step [starting-star-count ending-star-count star-step]
     (loop [max-stars starting-star-count
@@ -255,32 +255,6 @@
     (scrape-repositories-with-star-step 50000 20000 2000)
     (scrape-repositories-with-star-step 10000 1000 1000))
 
-(comment
-    (transduce repository-processing-pipeline-xf (constantly nil) repo-models)
-
-    (process-scraped-repositories)
-
-    (timbre/debug "huh")
-
-    (persist-repo "https://api.github.com/repos/devlooped/moq")
-
-    (persist-repo "https://api.github.com/repos/v8/v8")
-
-    (persist-repo "https://api.github.com/repos/vuejs/core")
-
-    (def repo (get-oldest-processed-repository!))
-
-    repo
-
-    (map :repository/url [repo])
-
-    (->> [repo]
-         (map :repository/url)
-         (clojure.string/join " "))
-
-    (mark-repository-as-processed! repo)
-
-    )
 
 (comment
     ; How to run scraper

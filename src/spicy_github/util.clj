@@ -58,3 +58,6 @@
 
 (defn execute-log [name]
     (execute #(timbre/debug name %)))
+
+(defn execute-pipeline [xf input]
+    (transduce xf (constantly nil) input))

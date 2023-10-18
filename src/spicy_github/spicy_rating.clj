@@ -53,13 +53,29 @@
                    (* comment-offset (rate-emojis reactions-json))
                    (* comment-offset (rate-total-reactions reactions-json))))))
 
+(defn sum-reactions-of-type [reactions types]
+    (reduce + (vals (select-keys reactions types))))
+
+(defn get-funny-rating [reactions]
+    (sum-reactions-of-type reactions [:laugh]))
+
+(defn get-controversial-rating [reactions]
+    (sum-reactions-of-type reactions [:-1 :confused :eyes]))
+
+(defn get-agreeable-rating [reactions]
+    (sum-reactions-of-type reactions [:+1 :rocket :heart]))
+
 (defn- map-and-rate-issue [issue]
-    {:spicy-issue/id     (:issue/id issue)
-     :spicy-issue/rating (rate-issue issue)})
+    {:spicy-issue/id           (:issue/id issue)
+     :spicy-issue/total-rating (rate-issue issue)})
 
 (defn- map-and-rate-comment [comment]
-    {:spicy-comment/id     (:comment/id comment)
-     :spicy-comment/rating (rate-comment comment)})
+    (let [reactions (parse-json (:comment/reaction-json comment))]
+        {:spicy-comment/id                   (:comment/id comment)
+         :spicy-comment/total-rating         (double (rate-comment comment))
+         :spicy-comment/funny-rating         (double (get-funny-rating reactions))
+         :spicy-comment/controversial-rating (double (get-controversial-rating reactions))
+         :spicy-comment/agreeable-rating     (double (get-agreeable-rating reactions))}))
 
 (defn- forever-rate! [get-fn! map-fn update-at-fn]
     (loop [current-time (new Date)]
@@ -77,3 +93,32 @@
 
 (defn forever-rate-comments! []
     (forever-rate! db/get-n-latest-comments-before! map-and-rate-comment :comment/updated-at))
+
+(def spicy-comments-xf
+    (comp
+        (map map-and-rate-comment)
+        (execute #(db/persist-record! %))))
+
+(defn rate-all-comments []
+    (let [now (new Date)]
+        (loop [comments (db/get-n-oldest-comments-before! 100 now)]
+            (if (empty? comments)
+                nil
+                (let [spicy-comments (doall (map map-and-rate-comment comments))]
+                    (doall (map db/persist-record-exception-safe! spicy-comments))
+                    (recur (db/get-n-oldest-comments-before! 100 now)))))))
+(comment
+
+    (rate-all-comments)
+
+
+
+    (def nowish (new Date))
+
+    (def comments (db/get-n-oldest-comments-before! 10000 (new Date)))
+
+    (execute-pipeline spicy-comments-xf comments)
+
+    (db/persist-record! (first (into [] spicy-comments-xf comments)))
+
+)

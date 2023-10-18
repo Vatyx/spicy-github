@@ -75,7 +75,10 @@
     [:map
      {:belongs-to {:spicy-issue/issue {:model :issue :foreign-key :spicy-issue/id}}}
      [:spicy-issue/id {:primary-key true} string?]
-     [:spicy-issue/rating float?]
+     [:spicy-issue/total-rating float?]
+     [:spicy-issue/controversial-rating float?]
+     [:spicy-issue/funny-rating float?]
+     [:spicy-issue/agreeable-rating float?]
      [:spicy-issue/created-at {:auto true} inst?]
      [:spicy-issue/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
@@ -83,7 +86,10 @@
     [:map
      {:belongs-to {:spicy-comment/comment {:model :comment :foreign-key :spicy-comment/id}}}
      [:spicy-comment/id {:primary-key true} string?]
-     [:spicy-comment/rating float?]
+     [:spicy-comment/total-rating float?]
+     [:spicy-comment/controversial-rating float?]
+     [:spicy-comment/funny-rating float?]
+     [:spicy-comment/agreeable-rating float?]
      [:spicy-comment/created-at {:auto true} inst?]
      [:spicy-comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 

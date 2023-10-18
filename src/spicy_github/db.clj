@@ -111,6 +111,27 @@
                       (helpers/limit n)
                       (q/all! table)))))))
 
+(defn get-n-oldest!
+    ([table query-relations! n]
+     (transaction/execute!
+         (fn []
+             (map query-relations!
+                  (->
+                      (helpers/order-by :updated-at)
+                      (helpers/limit n)
+                      (q/all! table)))))))
+
+(defn get-n-oldest-before!
+    ([table query-relations! n before]
+     (transaction/execute!
+         (fn []
+             (map query-relations!
+                  (->
+                      (helpers/order-by :updated-at)
+                      (helpers/where [:< :updated-at before])
+                      (helpers/limit n)
+                      (q/all! table)))))))
+
 (defn query-comment-relations! [comment]
     (q/load! comment :comment/user :comment/spicy-comment))
 
@@ -133,6 +154,9 @@
 (defn get-n-latest-comments-before!
     ([before] (get-n-latest-before! :comment query-comment-relations! before))
     ([n before] (get-n-latest-before! :comment query-comment-relations! n before)))
+
+(defn get-n-oldest-comments-before!
+    ([n before] (get-n-oldest-before! :comment query-comment-relations! n before)))
 
 (register-db!)
 (migrate-db!)
