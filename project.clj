@@ -28,7 +28,9 @@
                    [stylefy/rum "3.0.0"]
                    [com.taoensso/timbre "6.3.1"]
                    ;[com.fzakaria/slf4j-timbre "0.4.0"]
+                   [clojure-interop/java.io "1.0.5"]
                    [cljs-http "0.1.46"]]
+    :repositories [["github" "https://github.com/clojure-interop/java-jdk"]]
     :main ^:skip-aot spicy-github.core
     :aot [spicy-github.core]
     :target-path "target/%s"
@@ -48,6 +50,6 @@
                :profiles/dev {}
                :project/dev  {:dependencies [[javax.servlet/servlet-api "2.5"]
                                              [ring/ring-mock "0.3.2"]]}}
-    :aliases {"db-initialize" ["run" "-m" "spicy-github.db/initialize-db!"]
-              "db-migrate"    ["run" "-m" "spicy-github.db/migrate-db!"]
-              "db-rollback"   ["run" "-m" "spicy-github.db/rollback-db!"]})
+    :aliases {"db-reset"    ["run" "-m" "spicy-github.db/reset-db!"]
+              "db-migrate"  ["run" "-m" "spicy-github.db/migrate-db!"]
+              "db-rollback" ["run" "-m" "spicy-github.db/rollback-db!"]})

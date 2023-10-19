@@ -2,6 +2,7 @@
     (:gen-class)
     (:require [clojure.edn :as edn]
               [spicy-github.util :refer :all]
+              [clojure.stacktrace]
               [gungnir.transaction :as transaction]
               [spicy-github.model :as model]                ; this must be here so our models get initialized
               [spicy-github.db :as db]
@@ -83,7 +84,9 @@
               spicy-records (doall (map map-fn records))]
             (try (doall (map db/persist-record! spicy-records))
                  (Thread/sleep (int (rand 5000)))
-                 (catch Exception e (timbre/error (.getMessage e))))
+                 (catch Exception e
+                     (clojure.stacktrace/print-stack-trace e)
+                     (timbre/error (str e))))
             (if (< (count records) db/default-page-size)
                 (recur (new Date))
                 (recur (update-at-fn (last records)))))))
