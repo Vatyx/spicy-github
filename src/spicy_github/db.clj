@@ -8,31 +8,32 @@
               [taoensso.timbre :as timbre]
               [honey.sql]
               [honeysql.core]
+              [clojure.stacktrace]
               [honey.sql.helpers :as helpers]
         ; this must be here so our models get initialized
               [spicy-github.model :as model]
               [spicy-github.util :refer :all]
               [spicy-github.env :refer [spicy-env]]))
 
-(def db-server-name (spicy-env :rds-hostname))
-(def db-port (Integer/parseInt (spicy-env :rds-port)))
-(def db-name (spicy-env :rds-db-name))
-(def db-username (spicy-env :rds-username))
-(def db-password (spicy-env :rds-password))
+(defn- db-server-name [] (spicy-env :rds-hostname))
+(defn- db-port [] (Integer/parseInt (spicy-env :rds-port)))
+(defn- db-name [] (spicy-env :rds-db-name))
+(defn- db-username [] (spicy-env :rds-username))
+(defn- db-password [] (spicy-env :rds-password))
 
-(def db-config
+(defn- db-config []
     {:adapter       "postgresql"
-     :database-name db-name
-     :server-name   db-server-name
-     :username      db-username
-     :password      db-password
-     :port-number   db-port})
+     :database-name (db-name)
+     :server-name   (db-server-name)
+     :username      (db-username)
+     :password      (db-password)
+     :port-number   (db-port)})
 
-(defn register-db! [] (gungnir.database/make-datasource! db-config))
+(defn register-db! [] (gungnir.database/make-datasource! (db-config)))
 
 (defn load-resources [] (gungnir.migration/load-resources "migrations"))
 
-(defn initialize-db! []
+(defn reset-db! []
     (let [migrations (load-resources)]
         (register-db!)
         (gungnir.migration/rollback! migrations)
@@ -46,12 +47,11 @@
     (register-db!)
     (gungnir.migration/rollback! (load-resources)))
 
+(defn initialize! []
+    (register-db!)
+    (migrate-db!))
 
-; TODO: Fix this, it needs to have a generic query function
-; that does a lookup and merge if records are found by that id
 (defn persist!
-    "Hack because I don't know how to decompose this yet. Modified version of gungnir.query/save!
-     because our records will have primary keys already associated with them from github."
     ([changeset query-by-id! clean-record equality-check?]
      (persist! changeset gungnir.database/*datasource* query-by-id! clean-record equality-check?))
     ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
@@ -83,7 +83,9 @@
 (defn persist-record-exception-safe! [record]
     (try
         (persist-record! record)
-        (catch Exception e (timbre/error (.getMessage e))
+        (catch Exception e
+            (clojure.stacktrace/print-stack-trace e)
+            (timbre/error (str e))
                            record)))
 
 (def default-page-size 10)
@@ -157,6 +159,3 @@
 
 (defn get-n-oldest-comments-before!
     ([n before] (get-n-oldest-before! :comment query-comment-relations! n before)))
-
-(register-db!)
-(migrate-db!)

@@ -5,6 +5,7 @@
               [spicy-github.model]
               [spicy-github.util :refer :all]
               [spicy-github.adapters :as adapters]
+              [clojure.stacktrace]
               [spicy-github.logging :as logging]
               [malli.dev.pretty]
               [clj-http.client :as client]
@@ -13,12 +14,12 @@
               [hiccup.util]
               [gungnir.model]
               [gungnir.query :as q]
-              [gungnir.transaction :as transaction]
               [clj-time.core :as t]
               [honey.sql.helpers :as h]
               [net.cgrand.xforms :as x]
               [taoensso.timbre :as timbre]
-              [throttler.core :refer [throttle-fn]]))
+              [throttler.core :refer [throttle-fn]])
+    (:import (java.sql Date)))
 
 (defn load-repository-query [] (load-resource "repository-query.graphql"))
 
@@ -43,6 +44,8 @@
         (try
             (request-fn)
             (catch Exception e
+                (clojure.stacktrace/print-stack-trace e)
+                (timbre/error (str e))
                 (if (zero? retry-count)
                     nil
                     (request-retry payload (dec retry-count)))))))
@@ -111,7 +114,7 @@
                   db/persist-record-exception-safe!)))
 
 (defn get-oldest-processed-repository! []
-    (-> (h/where [:< :repository/processed-at (java.sql.Date. (inst-ms (-> 7 t/days t/ago)))])
+    (-> (h/where [:< :repository/processed-at (Date. (inst-ms (-> 7 t/days t/ago)))])
         (h/order-by :repository/processed-at)
         (h/limit 1)
         (q/all! :repository)
@@ -125,7 +128,7 @@
 
 (defn mark-repository-as-processed! [repository]
     (-> repository
-        (assoc :repository/processed-at (java.sql.Date. (inst-ms (t/now))))
+        (assoc :repository/processed-at (Date. (inst-ms (t/now))))
         db/persist-record-exception-safe!))
 
 (defn get-repository-stars [repository]

@@ -3,13 +3,16 @@
     (:require
         [clojure.java.io :as io]
         [taoensso.timbre :as timbre]
+        [clojure.stacktrace]
         [spicy-github.env :refer [spicy-env]]
         [taoensso.timbre :as timbre :refer :all]
-        [taoensso.timbre.appenders.community.rolling :refer :all])
+        [taoensso.timbre.appenders.community.rolling :refer :all]
+        [jdk.io.FileWriter :as file-writer])
     (:import
-        (java.io IOException)
+        (java.io BufferedWriter)
         [java.text ParsePosition SimpleDateFormat]
-        [java.util Calendar]))
+        (java.time Instant)
+        [java.util Calendar Date]))
 
 ; We COULD use timbre environment variable, but I don't want to
 ; since we're configuring the logging ourselves through overrides
@@ -64,9 +67,8 @@
         (file-seq (clojure.java.io/file log-path))))
 
 (defn- maintain-logs! [log path prev-cal calendar-cutoff]
-    (let [latest-logs (shift-log-period log path prev-cal)]
-        (clean-old-logs! calendar-cutoff)
-        latest-logs))
+    (shift-log-period log path prev-cal)
+    (clean-old-logs! calendar-cutoff))
 
 ; Copy-pasta
 (defn- log-cal [date] (let [now (Calendar/getInstance)] (.setTime now date) now))
@@ -86,6 +88,10 @@
         (.set cal Calendar/MILLISECOND 999)
         cal))
 
+(def log-file-writer (atom nil))
+(def log-file (atom nil))
+(def last-flush (atom nil))
+
 ; Copy-pasta
 (defn- rotating-rolling-appender
     "Returns a Rolling file appender. Opts:
@@ -103,19 +109,33 @@
                    prev-cal (prev-period-end-cal instant pattern 1)
                    delete-cal (prev-period-end-cal instant pattern num-logs)]
                  (try
-                     (when-let [log (atom (io/file composite-log-path))]
-                         (try
-                             (locking lock
-                                 (when-not (.exists @log)
-                                     (io/make-parents @log))
-                                 (if (.exists @log)
-                                     (when (<= (.lastModified @log) (.getTimeInMillis prev-cal))
-                                         (maintain-logs! @log composite-log-path prev-cal delete-cal))
-                                     (swap! log (.createNewFile @log))))
-                             (with-open [w (io/writer @log :append true)]
-                                 (spit w (str output-str "\n")))
-                             (catch Exception e (println (.getMessage e)))))
-                     (catch Exception e (println (.getMessage e)))))))})
+                     (locking lock
+                         (when (nil? @log-file) (do
+                                                    (reset! log-file (io/file composite-log-path))
+                                                    (when (.exists @log-file)
+                                                        (reset! log-file-writer (file-writer/->file-writer composite-log-path true)))))
+                         (when-not (.exists @log-file)
+                             (io/make-parents @log-file))
+                         (if (.exists @log-file)
+                             (when (<= (.lastModified @log-file) (.getTimeInMillis prev-cal))
+                                 (do
+                                     (maintain-logs! @log-file composite-log-path prev-cal delete-cal)
+                                     (reset! log-file (io/file composite-log-path))
+                                     (when @log-file-writer (.close @log-file-writer))
+                                     (reset! log-file-writer (file-writer/->file-writer composite-log-path true))))
+                             (do
+                                 (.createNewFile @log-file)
+                                 (reset! log-file-writer (file-writer/->file-writer composite-log-path true)))))
+                     (let [w (new BufferedWriter @log-file-writer)]
+                         (.write w (str output-str "\n"))
+                         (.flush w)
+                         (when (not @last-flush) (reset! last-flush (Instant/now))))
+                     (let [now (Instant/now)]
+                         (when (<= (+ 5000 (inst-ms @last-flush)) (inst-ms now))
+                             (do
+                                 (reset! last-flush now)
+                                 (.flush @log-file-writer))))
+                     (catch Exception e (clojure.stacktrace/print-stack-trace e))))))})
 
 (timbre/merge-config! {:min-level  (keyword log-level)
                        :appenders  {:rotating-rotating-daily (rotating-rolling-appender)}
@@ -126,3 +146,5 @@
                                                               (if (string? %)
                                                                   %
                                                                   (with-out-str (clojure.pprint/pprint %)))))))]})
+
+(defn initialize! [])
