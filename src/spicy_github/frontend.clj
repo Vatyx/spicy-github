@@ -8,7 +8,6 @@
 
 (defn get-index-html []
     (-> (io/resource "public/index.html")
-        io/file
         slurp))
 
 (def index-html (get-index-html))

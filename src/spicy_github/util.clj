@@ -10,7 +10,6 @@
 
 (defn load-resource [resource-name]
     (-> (io/resource resource-name)
-        io/file
         slurp))
 
 (defn namespace-key [namespace key]

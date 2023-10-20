@@ -25,7 +25,6 @@
 
 (defn load-github-tokens! []
     (-> (io/resource "token.edn")
-        io/file
         slurp
         edn/read-string
         :github-token))
