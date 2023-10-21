@@ -1,6 +1,7 @@
 (ns spicy-github.db
     (:gen-class)
-    (:require [clojure.java.io :as io]
+    (:require [clojure.edn :as edn]
+              [clojure.java.io :as io]
               [clojure.string :as cs]
               [gungnir.changeset :as c]
               [gungnir.database]
@@ -41,17 +42,26 @@
      :password      (db-password)
      :port-number   (db-port)})
 
-(defn- spicy-migrate [migrations-path]
-    (-> (doto (ConfigurationBuilder.)
-            (.setScanners (into-array Scanner [(ResourcesScanner.)]))
-            (.setUrls (ClasspathHelper/forClassLoader (make-array ClassLoader 0))))
-        ; TODO
-        (slurp)
-        ))
+; https://stackoverflow.com/questions/46488466/clojure-list-subfolders-in-resources-in-uberjar
+(defn- spicy-load-resources [migrations-path]
+    (let [conf
+          (doto (ConfigurationBuilder.)
+              (.setScanners (into-array Scanner [(ResourcesScanner.)]))
+              (.setUrls (ClasspathHelper/forClassLoader (make-array ClassLoader 0))))]
+        (let [migration-files
+              (-> (.getResources (Reflections. conf) ".*")
+                  (filter #(cs/starts-with? % migrations-path))
+                  (filter #(cs/ends-with? % ".edn"))
+                  (sort))]
+            (map
+                #(assoc (edn/read-string (slurp %))
+                     :id
+                     (subs (cs/last-index-of % "/") (+ (cs/last-index-of % "/") 4)))
+                migration-files))))
 
 (defn register-db! [] (gungnir.database/make-datasource! (db-config)))
 
-(defn load-resources [] (gungnir.migration/load-resources "migrations"))
+(defn load-resources [] (spicy-load-resources "migrations"))
 
 (defn reset-db! []
     (let [migrations (load-resources)]

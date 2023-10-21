@@ -2,17 +2,14 @@
     (:gen-class)
     (:require
         [ring.adapter.jetty :as jetty]
-        [spicy-github.env :refer [spicy-env]]
+        [spicy-github.util :refer [load-env]]
         [spicy-github.db :as db]
         [spicy-github.logging :as logging]
         [spicy-github.scraper :as scraper]
         [spicy-github.api :as app]))
 
 (defn app-port []
-    (Integer/parseInt
-        (if-let [env-port (spicy-env :front-end-port)]
-            env-port
-            "80")))
+    (Integer/parseInt (load-env :front-end-port "FRONT_END_PORT" :FRONT_END_PORT "80")))
 
 (defn -main
     [& args]

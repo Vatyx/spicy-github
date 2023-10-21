@@ -4,7 +4,8 @@
               [clojure.java.io :as io]
               [taoensso.timbre :as timbre]
               [clojure.stacktrace]
-              [clojure.java.shell :refer [sh]])
+              [clojure.java.shell :refer [sh]]
+              [spicy-github.env :refer [spicy-env]])
     (:import (gungnir.database RelationAtom)))
 
 (defmacro forever [& body]
@@ -17,7 +18,7 @@
     ([keyword env-var-name env-json-keyword]
      (load-env keyword env-var-name env-json-keyword ""))
     ([keyword env-var-name env-json-keyword default-value]
-    (try (if-let [spicy-value (spicy-github.env/spicy-env keyword)]
+    (try (if-let [spicy-value (spicy-env keyword)]
         spicy-value
         (if-let [env-value (System/getenv env-var-name)]
             env-value
