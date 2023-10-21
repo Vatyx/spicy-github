@@ -15,7 +15,6 @@
                    [hiccup "2.0.0-RC1"]
                    [compojure "1.7.0"]
                    [com.github.seancorfield/next.jdbc "1.3.883"]
-                   [postgresql "9.3-1102.jdbc41"]
                    [kwrooijen/gungnir "0.0.2-SNAPSHOT"]
                    [defun "0.3.1"]
                    [clj-time "0.15.2"]
@@ -31,7 +30,7 @@
                    [clojure-interop/java.io "1.0.5"]
                    [cljs-http "0.1.46"]]
     :repositories [["github" "https://github.com/clojure-interop/java-jdk"]]
-    :main ^:skip-aot spicy-github.core
+    :main spicy-github.core
     :aot [spicy-github.core]
     :target-path "target/%s"
     :plugins [[lein-ring "0.12.6"]
@@ -49,7 +48,14 @@
                               :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
                :profiles/dev {}
                :project/dev  {:dependencies [[javax.servlet/servlet-api "2.5"]
-                                             [ring/ring-mock "0.3.2"]]}}
+                                             [ring/ring-mock "0.3.2"]
+                                             [org.nrepl/incomplete "0.1.0"]
+                                             [com.github.jpmonettas/clojure "1.11.1-11"]
+                                             [com.github.jpmonettas/flow-storm-dbg "3.7.5"]]
+                              :exclusions   [org.clojure/clojure]
+                              :jvm-opts     ["-Dclojure.storm.instrumentEnable=true"
+                                             "-Dclojure.storm.instrumentOnlyPrefixes=spicy-github"
+                                             "-Dflowstorm.startRecording=false"]}}
     :aliases {"db-reset"    ["run" "-m" "spicy-github.db/reset-db!"]
               "db-migrate"  ["run" "-m" "spicy-github.db/migrate-db!"]
               "db-rollback" ["run" "-m" "spicy-github.db/rollback-db!"]})

@@ -1,11 +1,15 @@
 (ns spicy-github.core
-  (:gen-class)
+    (:gen-class)
     (:require
-     [ring.adapter.jetty :as jetty]
-     [spicy-github.db :as db]
-     [spicy-github.logging :as logging]
-     [spicy-github.scraper :as scraper]
-     [spicy-github.api :as app]))
+        [ring.adapter.jetty :as jetty]
+        [spicy-github.util :refer [load-env]]
+        [spicy-github.db :as db]
+        [spicy-github.logging :as logging]
+        [spicy-github.scraper :as scraper]
+        [spicy-github.api :as app]))
+
+(defn app-port []
+    (Integer/parseInt (load-env :front-end-port "PORT" :PORT "5000")))
 
 (defn -main
     [& args]
@@ -13,4 +17,4 @@
     (db/initialize!)
     (.start (Thread. scraper/scrape-all-repositories))
     (.start (Thread. scraper/process-scraped-repositories))
-    (jetty/run-jetty app/app {:port 3000}))
+    (jetty/run-jetty app/app {:port (app-port)}))

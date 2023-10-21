@@ -4,7 +4,7 @@
     (:require [cljs-http.client :as http]
               [cljs.core.async :refer [<!]]))
 
-(def spicy-endpoint (spicy-env :spicy-endpoint))
+(def spicy-endpoint (str (spicy-env :spicy-endpoint) ":" (spicy-env :front-end-port) "/"))
 
 (defn- get-n-issues-before-endpoint
     ([] (get-n-issues-before-endpoint (.now js/Date)))

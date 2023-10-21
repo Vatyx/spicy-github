@@ -1,7 +1,6 @@
 (ns spicy-github.scraper
     (:gen-class)
-    (:require [clojure.java.io :as io]
-              [spicy-github.db :as db]
+    (:require [spicy-github.db :as db]
               [spicy-github.model]
               [spicy-github.util :refer :all]
               [spicy-github.adapters :as adapters]
@@ -24,11 +23,10 @@
 (defn load-repository-query [] (load-resource "repository-query.graphql"))
 
 (defn load-github-tokens! []
-    (-> (io/resource "token.edn")
-        io/file
-        slurp
-        edn/read-string
-        :github-token))
+    (let [token-edn (-> (load-resource "token.edn")
+                        edn/read-string)]
+        (timbre/info "Loading github token: " (str token-edn))
+        (:github-token token-edn)))
 
 (def get-github-token!
     (let [counter (atom 0)

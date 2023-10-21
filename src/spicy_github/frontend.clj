@@ -1,15 +1,12 @@
 (ns spicy-github.frontend
     (:require
         [cheshire.core :refer :all]
-        [clojure.java.io :as io]
         [rum.core :as rum]
         [stylefy.core :as stylefy]
-        [spicy-github.db :as database]))
+        [spicy-github.db :as database]
+        [spicy-github.util :as util]))
 
-(defn get-index-html []
-    (-> (io/resource "public/index.html")
-        io/file
-        slurp))
+(defn- get-index-html [] (util/load-resource "public/index.html"))
 
 (def index-html (get-index-html))
 

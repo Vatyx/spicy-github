@@ -1,6 +1,8 @@
 (ns spicy-github.db
     (:gen-class)
-    (:require [gungnir.changeset :as c]
+    (:require [clojure.edn :as edn]
+              [clojure.string :as cs]
+              [gungnir.changeset :as c]
               [gungnir.database]
               [gungnir.migration]
               [gungnir.transaction :as transaction]
@@ -8,18 +10,19 @@
               [taoensso.timbre :as timbre]
               [honey.sql]
               [honeysql.core]
-              [clojure.stacktrace]
               [honey.sql.helpers :as helpers]
+              [clojure.stacktrace]
         ; this must be here so our models get initialized
               [spicy-github.model :as model]
-              [spicy-github.util :refer :all]
-              [spicy-github.env :refer [spicy-env]]))
+              [spicy-github.util :refer :all]))
 
-(defn- db-server-name [] (spicy-env :rds-hostname))
-(defn- db-port [] (Integer/parseInt (spicy-env :rds-port)))
-(defn- db-name [] (spicy-env :rds-db-name))
-(defn- db-username [] (spicy-env :rds-username))
-(defn- db-password [] (spicy-env :rds-password))
+(def default-password "")
+
+(defn- db-server-name [] (load-env :rds-hostname "RDS_HOSTNAME" :RDS_HOSTNAME))
+(defn- db-port [] (Integer/parseInt (load-env :rds-port "RDS_PORT" :RDS_PORT)))
+(defn- db-name [] (load-env :rds-db-name "RDS_DB_NAME" :RDS_DB_NAME))
+(defn- db-username [] (load-env :rds-username "RDS_USERNAME" :RDS_USERNAME))
+(defn- db-password [] (load-env :rds-password "RDS_PASSWORD" :RDS_PASSWORD default-password))
 
 (defn- db-config []
     {:adapter       "postgresql"
@@ -29,9 +32,26 @@
      :password      (db-password)
      :port-number   (db-port)})
 
+(defn- log-and-return-migration [migration]
+    (timbre/info (str "Loading migration " migration))
+    migration)
+
+; https://stackoverflow.com/questions/46488466/clojure-list-subfolders-in-resources-in-uberjar
+(defn- spicy-load-resources [migrations-path]
+    (try
+        (doall (map log-and-return-migration (gungnir.migration/load-resources migrations-path)))
+        (catch Exception _
+            (map log-and-return-migration
+                 (map #(assoc (edn/read-string (load-resource %)) :id (subs % (+ 1 (cs/last-index-of % "/")) (cs/last-index-of % ".edn")))
+                      (let [loaded-resource-names (list-zip-contents migrations-path)]
+                          (timbre/info (str "Loaded " (count loaded-resource-names) " resources: " (cs/join ", " loaded-resource-names)))
+                          (->> loaded-resource-names
+                               (filter (fn [path] (cs/ends-with? path ".edn")))
+                               (sort))))))))
+
 (defn register-db! [] (gungnir.database/make-datasource! (db-config)))
 
-(defn load-resources [] (gungnir.migration/load-resources "migrations"))
+(defn- load-resources [] (spicy-load-resources "migrations"))
 
 (defn reset-db! []
     (let [migrations (load-resources)]
@@ -86,7 +106,7 @@
         (catch Exception e
             (clojure.stacktrace/print-stack-trace e)
             (timbre/error (str e))
-                           record)))
+            record)))
 
 (def default-page-size 10)
 
