@@ -185,13 +185,12 @@
 
 (defn- try-initialize-issues! []
     (when (empty? @issues)
-        (api/get-n-issues-before update-issues!)))
+        (api/get-n-issues-before update-issues! is-loading-issues)))
 
 (defn- load-fn []
     (reset! is-loading-issues true)
-    (try (api/get-n-issues-before-from-issues update-issues! @issues) (catch js/Object _ (reset! is-loading-issues false)))
-    (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn))
-    (reset! is-loading-issues false))
+    (try (api/get-n-issues-before-from-issues update-issues! @issues is-loading-issues) (catch js/Object _ (reset! is-loading-issues false)))
+    (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn)))
 
 (def listener-fn (atom nil))
 
@@ -252,7 +251,7 @@
 (reset! refresh-issues-fn mount-issues-component!)
 
 ; Seed initial issues
-(api/get-n-issues-before update-issues!)
+(api/get-n-issues-before update-issues! is-loading-issues)
 
 ; Maybe we got an error on first load, try again until we don't have errors
 (js/setInterval

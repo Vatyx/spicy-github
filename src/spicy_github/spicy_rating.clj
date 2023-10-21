@@ -78,18 +78,27 @@
          :spicy-comment/controversial-rating (double (get-controversial-rating reactions))
          :spicy-comment/agreeable-rating     (double (get-agreeable-rating reactions))}))
 
-(defn- forever-rate! [get-fn! map-fn update-at-fn]
-    (loop [current-time (new Date)]
-        (let [records (get-fn! db-page-size current-time)
-              spicy-records (doall (map map-fn records))]
-            (try (doall (map db/persist-record! spicy-records))
-                 (Thread/sleep (int (rand 5000)))
-                 (catch Exception e
-                     (clojure.stacktrace/print-stack-trace e)
-                     (timbre/error (str e))))
-            (if (< (count records) db/default-page-size)
-                (recur (new Date))
-                (recur (update-at-fn (last records)))))))
+(defn- forever-rate!
+    ([get-fn! map-fn update-at-fn]
+     (forever-rate! get-fn! map-fn update-at-fn (new Date)))
+    ([get-fn! map-fn update-at-fn last-processed-input]
+     (let [last-processed (atom last-processed-input)]
+         (try
+             (loop [current-time @last-processed]
+                 (reset! last-processed current-time)
+                 (let [records (get-fn! db-page-size current-time)
+                       spicy-records (doall (map map-fn records))]
+                     (try (doall (map db/persist-record! spicy-records))
+                          (Thread/sleep (int (rand 5000)))
+                          (catch Exception e
+                              (clojure.stacktrace/print-stack-trace e)
+                              (timbre/error (str e))))
+                     (if (< (count records) db/default-page-size)
+                         (recur (new Date))
+                         (recur (update-at-fn (last records))))))
+             (catch Exception e
+                 (timbre/error (str e))
+                 (forever-rate! get-fn! map-fn update-at-fn @last-processed))))))
 
 (defn forever-rate-issues! []
     (forever-rate! db/get-n-latest-issues-before! map-and-rate-issue :issue/updated-at))
@@ -124,4 +133,4 @@
 
     (db/persist-record! (first (into [] spicy-comments-xf comments)))
 
-)
+    )
