@@ -28,7 +28,10 @@
                    [com.taoensso/timbre "6.3.1"]
                    ;[com.fzakaria/slf4j-timbre "0.4.0"]
                    [clojure-interop/java.io "1.0.5"]
-                   [cljs-http "0.1.46"]]
+                   [cljs-http "0.1.46"]
+                   [org.reflections/reflections "0.10.2"]
+                   [javax.servlet/servlet-api "2.5"]
+                   [com.google.guava/guava "32.1.0-jre"]]
     :repositories [["github" "https://github.com/clojure-interop/java-jdk"]]
     :main spicy-github.core
     :aot [spicy-github.core]

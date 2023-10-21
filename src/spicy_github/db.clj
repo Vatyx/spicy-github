@@ -1,6 +1,7 @@
 (ns spicy-github.db
     (:gen-class)
     (:require [clojure.java.io :as io]
+              [clojure.string :as cs]
               [gungnir.changeset :as c]
               [gungnir.database]
               [gungnir.migration]
@@ -13,7 +14,16 @@
               [honey.sql.helpers :as helpers]
         ; this must be here so our models get initialized
               [spicy-github.model :as model]
-              [spicy-github.util :refer :all]))
+              [spicy-github.util :refer :all])
+    (:import java.util.zip.ZipInputStream
+             [org.reflections
+              Reflections
+              scanners.ResourcesScanner
+              scanners.Scanner
+              util.ClasspathHelper
+              util.ConfigurationBuilder]
+             (org.reflections.scanners ResourcesScanner)
+             (org.reflections.util ClasspathHelper ConfigurationBuilder)))
 
 (def default-password "")
 
@@ -32,8 +42,10 @@
      :port-number   (db-port)})
 
 (defn- spicy-migrate [migrations-path]
-    (-> (io/resource migrations-path)
-        (sort-by #(.getFile %))
+    (-> (doto (ConfigurationBuilder.)
+            (.setScanners (into-array Scanner [(ResourcesScanner.)]))
+            (.setUrls (ClasspathHelper/forClassLoader (make-array ClassLoader 0))))
+        ; TODO
         (slurp)
         ))
 
