@@ -59,4 +59,6 @@
                                              "-Dflowstorm.startRecording=false"]}}
     :aliases {"db-reset"    ["run" "-m" "spicy-github.db/reset-db!"]
               "db-migrate"  ["run" "-m" "spicy-github.db/migrate-db!"]
-              "db-rollback" ["run" "-m" "spicy-github.db/rollback-db!"]})
+              "db-rollback" ["run" "-m" "spicy-github.db/rollback-db!"]
+              "build"       ["do" "clean" ["uberjar"]]
+              "run-clean"   ["do" "clean" ["run"]]})
