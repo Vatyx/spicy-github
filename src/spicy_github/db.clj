@@ -1,6 +1,7 @@
 (ns spicy-github.db
     (:gen-class)
-    (:require [gungnir.changeset :as c]
+    (:require [clojure.java.io :as io]
+              [gungnir.changeset :as c]
               [gungnir.database]
               [gungnir.migration]
               [gungnir.transaction :as transaction]
@@ -12,14 +13,15 @@
               [honey.sql.helpers :as helpers]
         ; this must be here so our models get initialized
               [spicy-github.model :as model]
-              [spicy-github.util :refer :all]
-              [spicy-github.env :refer [spicy-env]]))
+              [spicy-github.util :refer :all]))
 
-(defn- db-server-name [] (spicy-env :rds-hostname))
-(defn- db-port [] (Integer/parseInt (spicy-env :rds-port)))
-(defn- db-name [] (spicy-env :rds-db-name))
-(defn- db-username [] (spicy-env :rds-username))
-(defn- db-password [] (spicy-env :rds-password))
+(def default-password "")
+
+(defn- db-server-name [] (load-env :rds-hostname "RDS_HOSTNAME" :RDS_HOSTNAME))
+(defn- db-port [] (Integer/parseInt (load-env :rds-port "RDS_PORT" :RDS_PORT)))
+(defn- db-name [] (load-env :rds-db-name "RDS_DB_NAME" :RDS_DB_NAME))
+(defn- db-username [] (load-env :rds-username "RDS_USERNAME" :RDS_USERNAME))
+(defn- db-password [] (load-env :rds-password "RDS_PASSWORD" :RDS_PASSWORD default-password))
 
 (defn- db-config []
     {:adapter       "postgresql"
@@ -28,6 +30,12 @@
      :username      (db-username)
      :password      (db-password)
      :port-number   (db-port)})
+
+(defn- spicy-migrate [migrations-path]
+    (-> (io/resource migrations-path)
+        (sort-by #(.getFile %))
+        (slurp)
+        ))
 
 (defn register-db! [] (gungnir.database/make-datasource! (db-config)))
 
@@ -86,7 +94,7 @@
         (catch Exception e
             (clojure.stacktrace/print-stack-trace e)
             (timbre/error (str e))
-                           record)))
+            record)))
 
 (def default-page-size 10)
 
