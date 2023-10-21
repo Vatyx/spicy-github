@@ -10,15 +10,18 @@
               [cheshire.core :refer :all]
               [clojure.instant :as instant]
               [clojure.pprint]
-              [spicy-github.env :refer [spicy-env]])
+              [spicy-github.env :refer [spicy-env]]
+              [taoensso.timbre :as timbre])
     (:import (java.util Date)))
 
-(defn- landing-page [_]
+(defn- landing-page [request]
+    (timbre/info (str request))
     {:status  200
      :headers {"Content-Type" "text/html"}
      :body    frontend/index-html})
 
 (defn get-n-latest-issues-before! [before]
+    (timbre/info "Received n-latest-issues-before:" (str before))
     (generate-string
         (map adapters/sanitize-issue-for-api
              (db/get-n-latest-issues-before!

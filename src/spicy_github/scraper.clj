@@ -23,9 +23,10 @@
 (defn load-repository-query [] (load-resource "repository-query.graphql"))
 
 (defn load-github-tokens! []
-    (-> (load-resource "token.edn")
-        edn/read-string
-        :github-token))
+    (let [token-edn (-> (load-resource "token.edn")
+                        edn/read-string)]
+        (timbre/info "Loading github token: " (str token-edn))
+        (:github-token token-edn)))
 
 (def get-github-token!
     (let [counter (atom 0)

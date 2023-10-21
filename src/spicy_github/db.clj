@@ -1,7 +1,6 @@
 (ns spicy-github.db
     (:gen-class)
     (:require [clojure.edn :as edn]
-              [clojure.java.io :as io]
               [clojure.string :as cs]
               [gungnir.changeset :as c]
               [gungnir.database]
@@ -11,20 +10,11 @@
               [taoensso.timbre :as timbre]
               [honey.sql]
               [honeysql.core]
-              [clojure.stacktrace]
               [honey.sql.helpers :as helpers]
+              [clojure.stacktrace]
         ; this must be here so our models get initialized
               [spicy-github.model :as model]
-              [spicy-github.util :refer :all])
-    (:import java.util.zip.ZipInputStream
-             [org.reflections
-              Reflections
-              scanners.ResourcesScanner
-              scanners.Scanner
-              util.ClasspathHelper
-              util.ConfigurationBuilder]
-             (org.reflections.scanners ResourcesScanner)
-             (org.reflections.util ClasspathHelper ConfigurationBuilder)))
+              [spicy-github.util :refer :all]))
 
 (def default-password "")
 
@@ -42,26 +32,26 @@
      :password      (db-password)
      :port-number   (db-port)})
 
+(defn- log-and-return-migration [migration]
+    (timbre/info (str "Loading migration " migration))
+    migration)
+
 ; https://stackoverflow.com/questions/46488466/clojure-list-subfolders-in-resources-in-uberjar
 (defn- spicy-load-resources [migrations-path]
-    (let [conf
-          (doto (ConfigurationBuilder.)
-              (.setScanners (into-array Scanner [(ResourcesScanner.)]))
-              (.setUrls (ClasspathHelper/forClassLoader (make-array ClassLoader 0))))]
-        (let [migration-files
-              (-> (.getResources (Reflections. conf) ".*")
-                  (filter #(cs/starts-with? % migrations-path))
-                  (filter #(cs/ends-with? % ".edn"))
-                  (sort))]
-            (map
-                #(assoc (edn/read-string (slurp %))
-                     :id
-                     (subs (cs/last-index-of % "/") (+ (cs/last-index-of % "/") 4)))
-                migration-files))))
+    (try
+        (doall (map log-and-return-migration (gungnir.migration/load-resources migrations-path)))
+        (catch Exception _
+            (map log-and-return-migration
+                 (map #(assoc (edn/read-string (load-resource %)) :id (subs % (+ 1 (cs/last-index-of % "/")) (cs/last-index-of % ".edn")))
+                      (let [loaded-resource-names (list-zip-contents migrations-path)]
+                          (timbre/info (str "Loaded " (count loaded-resource-names) " resources: " (cs/join ", " loaded-resource-names)))
+                          (->> loaded-resource-names
+                               (filter (fn [path] (cs/ends-with? path ".edn")))
+                               (sort))))))))
 
 (defn register-db! [] (gungnir.database/make-datasource! (db-config)))
 
-(defn load-resources [] (spicy-load-resources "migrations"))
+(defn- load-resources [] (spicy-load-resources "migrations"))
 
 (defn reset-db! []
     (let [migrations (load-resources)]

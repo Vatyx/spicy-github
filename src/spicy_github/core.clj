@@ -9,7 +9,7 @@
         [spicy-github.api :as app]))
 
 (defn app-port []
-    (Integer/parseInt (load-env :front-end-port "FRONT_END_PORT" :FRONT_END_PORT "80")))
+    (Integer/parseInt (load-env :front-end-port "PORT" :PORT "5000")))
 
 (defn -main
     [& args]
