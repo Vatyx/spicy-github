@@ -38,6 +38,7 @@
               [lein-environ "1.2.0"]]
     :hooks [leiningen.cljsbuild]
     :ring {:handler spicy-github.api/app}
+    :clean-targets ^{:protect false} [:target-path "resources/public/javascript/front_end.js"]
     :cljsbuild {:builds [{:source-paths ["front_end/src"]
                           :compiler     {:output-to     "resources/public/javascript/front_end.js"
                                          :optimizations :advanced

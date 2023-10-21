@@ -6,6 +6,7 @@
         [spicy-github.db :as db]
         [spicy-github.logging :as logging]
         [spicy-github.scraper :as scraper]
+        [spicy-github.spicy-rating :as spicy-rating]
         [spicy-github.api :as app]))
 
 (defn app-port []
@@ -15,6 +16,8 @@
     [& args]
     (logging/initialize!)
     (db/initialize!)
-    (.start (Thread. scraper/scrape-all-repositories))
-    (.start (Thread. scraper/process-scraped-repositories))
+    ;(.start (Thread. scraper/scrape-all-repositories))
+    ;(.start (Thread. scraper/process-scraped-repositories))
+    (.start (Thread. spicy-rating/forever-rate-issues!))
+    (.start (Thread. spicy-rating/forever-rate-comments!))
     (jetty/run-jetty app/app {:port (app-port)}))
