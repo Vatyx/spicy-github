@@ -104,7 +104,7 @@
 
 (defn sanitize-issue-for-api [issue]
     {:issue/id           (:issue/id issue)
-     :issue/url          (:issue/url issue)
+     :issue/html-url     (:issue/html-url issue)
      :issue/title        (:issue/title issue)
      :issue/body         (:issue/body issue)
      :issue/user         (sanitize-user-for-api (:issue/user issue))
