@@ -125,7 +125,7 @@
               (stylefy/use-style issue-without-comments-style)
               (stylefy/use-style issue-with-comments-style))
      [:h1 (stylefy/use-style issue-header-style)
-      [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/url issue)}) (:issue/title issue)]]
+      [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/html-url issue)}) (:issue/title issue)]]
      [:details
       [:summary [:div (stylefy/use-style issue-container-style)
                  [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]

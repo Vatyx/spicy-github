@@ -40,7 +40,7 @@
         (let [migrations (doall
                              (map log-and-return-migration
                                   (gungnir.migration/load-resources migrations-path)))]
-            (timbre/info (str "Loaded " (count migrations) " resources: " (cs/join ", " migrations)))
+            (timbre/info (str "Loaded " (count migrations) " resources."))
             migrations)
         (catch Exception _
             (map log-and-return-migration
@@ -92,7 +92,7 @@
                      input-record))))))
 
 (defn persist-record! [record]
-    (timbre/debug "Attempting to persist Record: " record)
+    (timbre/debug "Attempting to persist Record:" record)
     (let [changeset (c/create record)
           model-key (:changeset/model changeset)
           id-key (namespace-key model-key :id)]
@@ -110,7 +110,7 @@
             (timbre/error (str e))
             record)))
 
-(def default-page-size 50)
+(def default-page-size 25)
 
 (defn get-n-latest!
     ([table query-relations!] (get-n-latest! table query-relations! default-page-size))

@@ -38,7 +38,7 @@
      [:comment/id {:primary-key true} string?]
      [:comment/parent-comment {:optional true} string?]
      [:comment/url string?]
-     [:comment/html_url {:optional true} string?]
+     [:comment/html-url {:optional true} string?]
      [:comment/body string?]
      [:comment/total-reactions int?]
      [:comment/comment-creation-time inst?]
@@ -58,7 +58,7 @@
                    :issue/repository {:model :repository :foreign-key :issue/repository-id}}}
      [:issue/id {:primary-key true} string?]
      [:issue/url string?]
-     [:issue/html_url {:optional true} string?]
+     [:issue/html-url {:optional true} string?]
      [:issue/title string?]
      [:issue/body string?]
      [:issue/comments-url {:before-save [:sanitize-github-url]} string?]
