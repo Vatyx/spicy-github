@@ -41,10 +41,10 @@
            (route/resources "/")
            (route/not-found "Not Found"))
 
-(def app (let [reload-server (parse-boolean (load-env :reload-server "RELOAD_SERVER" :RELOAD_SERVER "false"))]
-             (if (nil? reload-server)
-                 (wrap-defaults app-routes site-defaults)
-                 (if reload-server
-                     (wrap-reload (wrap-defaults app-routes site-defaults))
-                     (wrap-defaults app-routes site-defaults))
-                 )))
+(defn app [] (let [reload-server (parse-boolean (load-env :reload-server "RELOAD_SERVER" :RELOAD_SERVER "false"))]
+                 (if (nil? reload-server)
+                     (wrap-defaults app-routes site-defaults)
+                     (if reload-server
+                         (wrap-reload (wrap-defaults app-routes site-defaults))
+                         (wrap-defaults app-routes site-defaults))
+                     )))
