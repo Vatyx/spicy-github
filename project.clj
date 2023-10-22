@@ -49,14 +49,9 @@
                               :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
                :profiles/dev {}
                :project/dev  {:dependencies [[javax.servlet/servlet-api "2.5"]
-                                             [ring/ring-mock "0.3.2"]
-                                             [org.nrepl/incomplete "0.1.0"]
-                                             [com.github.jpmonettas/clojure "1.11.1-11"]
-                                             [com.github.jpmonettas/flow-storm-dbg "3.7.5"]]
-                              :exclusions   [org.clojure/clojure]
-                              :jvm-opts     ["-Dclojure.storm.instrumentEnable=true"
-                                             "-Dclojure.storm.instrumentOnlyPrefixes=spicy-github"
-                                             "-Dflowstorm.startRecording=false"]}}
+                                             [ring/ring-mock "0.3.2"]]}}
     :aliases {"db-reset"    ["run" "-m" "spicy-github.db/reset-db!"]
               "db-migrate"  ["run" "-m" "spicy-github.db/migrate-db!"]
-              "db-rollback" ["run" "-m" "spicy-github.db/rollback-db!"]})
+              "db-rollback" ["run" "-m" "spicy-github.db/rollback-db!"]
+              "build"       ["do" "clean" ["uberjar"]]
+              "run-clean"   ["do" "clean" ["run"]]})

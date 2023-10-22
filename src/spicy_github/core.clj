@@ -7,6 +7,7 @@
         [spicy-github.logging :as logging]
         [spicy-github.scraper :as scraper]
         [spicy-github.spicy-rating :as spicy-rating]
+        [spicy-github.dev :as dev]
         [spicy-github.api :as app]))
 
 (defn app-port []
@@ -20,4 +21,5 @@
     ;(.start (Thread. scraper/process-scraped-repositories))
     (.start (Thread. spicy-rating/forever-rate-issues!))
     (.start (Thread. spicy-rating/forever-rate-comments!))
-    (jetty/run-jetty app/app {:port (app-port)}))
+    (when (dev/should-remap-db) (.start (Thread. dev/remap-db!)))
+    (jetty/run-jetty (app/app) {:port (app-port)}))

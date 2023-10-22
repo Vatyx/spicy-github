@@ -1,0 +1,7 @@
+{:up
+ [[:table/alter {:table :comment}
+   [:column/add
+    [:html-url {:optional true} :string]]]]
+ :down
+ [[:table/alter {:table :comment}
+   [:column/drop [:html-url]]]]}
