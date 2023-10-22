@@ -46,7 +46,7 @@
 (defn parse-issue [issue-json]
     {:issue/id                  (get-id-as-string issue-json)
      :issue/url                 (:url issue-json)
-     :issue/http-url            (:http_url issue-json)
+     :issue/html-url            (:html_url issue-json)
      :issue/comments-url        (-> issue-json :comments_url sanitize-github-url)
      :issue/repository-id       (-> issue-json :repository_url get-repository-id-for-repository-url)
      :issue/title               (:title issue-json)
@@ -62,7 +62,7 @@
 (defn parse-comment [comment-json]
     {:comment/id                    (get-id-as-string comment-json)
      :comment/url                   (:url comment-json)
-     :issue/http-url                (:http_url comment-json)
+     :comment/html-url              (:html_url comment-json)
      :comment/body                  (->> comment-json :body (str ""))
      :comment/comment-creation-time (:created_at comment-json)
      :comment/comment-updated-time  (:updated_at comment-json)

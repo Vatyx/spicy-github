@@ -1,7 +1,0 @@
-{:up
- [[:table/alter {:table :issue}
-   [:column/add
-    [:http-url {:optional true} :string]]]]
- :down
- [[:table/alter {:table :issue}]
-  [:column/drop :http-url]]}

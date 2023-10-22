@@ -45,8 +45,8 @@
                                          :pretty-print  false}
                           :jar          true}]}
     :profiles {:dev          [:project/dev :profiles/dev]
-               :uberjar      {:aot      :all
-                              :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
+               :uberjar      {:aot          :all
+                              :jvm-opts     ["-Dclojure.compiler.direct-linking=true"]}
                :profiles/dev {}
                :project/dev  {:dependencies [[javax.servlet/servlet-api "2.5"]
                                              [ring/ring-mock "0.3.2"]

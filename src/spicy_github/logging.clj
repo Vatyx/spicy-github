@@ -4,7 +4,7 @@
         [clojure.java.io :as io]
         [taoensso.timbre :as timbre]
         [clojure.stacktrace]
-        [spicy-github.env :refer [spicy-env]]
+        [spicy-github.util :refer [load-env]]
         [taoensso.timbre :as timbre :refer :all]
         [taoensso.timbre.appenders.community.rolling :refer :all]
         [jdk.io.FileWriter :as file-writer])
@@ -17,7 +17,7 @@
 ; We COULD use timbre environment variable, but I don't want to
 ; since we're configuring the logging ourselves through overrides
 ; that are *not* the timber environment variable.
-(def log-level (spicy-env :log-level))
+(def log-level (load-env :log-level "LOG_LEVEL" :LOG_LEVEL "info"))
 (def log-path "./logs/")
 (def log-name "spicy-log.log")
 (def log-name-count (count log-name))

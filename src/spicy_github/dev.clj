@@ -1,24 +1,14 @@
 (ns spicy-github.dev
     (:gen-class)
-    (:require [spicy-github.db :as db]
-              [spicy-github.model]
+    (:require [spicy-github.model]
+              [spicy-github.db :as db]
               [spicy-github.util :refer :all]
               [spicy-github.adapters :as adapters]
               [clojure.stacktrace]
-              [spicy-github.logging :as logging]
               [malli.dev.pretty]
-              [clj-http.client :as client]
-              [cheshire.core :refer :all]
-              [clojure.edn :as edn]
               [hiccup.util]
-              [gungnir.model]
-              [gungnir.query :as q]
-              [clj-time.core :as t]
-              [honey.sql.helpers :as h]
-              [net.cgrand.xforms :as x]
-              [taoensso.timbre :as timbre]
-              [throttler.core :refer [throttle-fn]])
-    (:import (java.sql Date)))
+              [gungnir.model])
+    (:import (java.util Date)))
 
 (defn should-remap-db [] (parse-boolean (load-env :remap-db "REMAP_DB" :REMAP_DB "false")))
 

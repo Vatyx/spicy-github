@@ -10,6 +10,7 @@
               [cheshire.core :refer :all]
               [clojure.instant :as instant]
               [clojure.pprint]
+              [spicy-github.util :refer [load-env]]
               [spicy-github.env :refer [spicy-env]]
               [taoensso.timbre :as timbre])
     (:import (java.util Date)))
@@ -40,7 +41,7 @@
            (route/resources "/")
            (route/not-found "Not Found"))
 
-(def app (let [reload-server (parse-boolean (spicy-env :reload-server))]
+(def app (let [reload-server (parse-boolean (load-env :reload-server "RELOAD_SERVER" :RELOAD_SERVER "false"))]
              (if (nil? reload-server)
                  (wrap-defaults app-routes site-defaults)
                  (if reload-server
