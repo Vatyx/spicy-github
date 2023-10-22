@@ -16,13 +16,11 @@
               [spicy-github.model :as model]
               [spicy-github.util :refer :all]))
 
-(def default-password "")
-
 (defn- db-server-name [] (load-env :rds-hostname "RDS_HOSTNAME" :RDS_HOSTNAME))
 (defn- db-port [] (Integer/parseInt (load-env :rds-port "RDS_PORT" :RDS_PORT)))
 (defn- db-name [] (load-env :rds-db-name "RDS_DB_NAME" :RDS_DB_NAME))
 (defn- db-username [] (load-env :rds-username "RDS_USERNAME" :RDS_USERNAME))
-(defn- db-password [] (load-env :rds-password "RDS_PASSWORD" :RDS_PASSWORD default-password))
+(defn- db-password [] (load-env :rds-password "RDS_PASSWORD" :RDS_PASSWORD))
 
 (defn- db-config []
     {:adapter       "postgresql"
@@ -39,7 +37,11 @@
 ; https://stackoverflow.com/questions/46488466/clojure-list-subfolders-in-resources-in-uberjar
 (defn- spicy-load-resources [migrations-path]
     (try
-        (doall (map log-and-return-migration (gungnir.migration/load-resources migrations-path)))
+        (let [migrations (doall
+                             (map log-and-return-migration
+                                  (gungnir.migration/load-resources migrations-path)))]
+            (timbre/info (str "Loaded " (count migrations) " resources: " (cs/join ", " migrations)))
+            migrations)
         (catch Exception _
             (map log-and-return-migration
                  (map #(assoc (edn/read-string (load-resource %)) :id (subs % (+ 1 (cs/last-index-of % "/")) (cs/last-index-of % ".edn")))
@@ -108,51 +110,47 @@
             (timbre/error (str e))
             record)))
 
-(def default-page-size 10)
+(def default-page-size 50)
 
 (defn get-n-latest!
     ([table query-relations!] (get-n-latest! table query-relations! default-page-size))
     ([table query-relations! n]
      (transaction/execute!
          (fn []
-             (map query-relations!
-                  (->
-                      (helpers/order-by [:updated-at :desc])
-                      (helpers/limit n)
-                      (q/all! table)))))))
+             (doall (map query-relations!
+                         (-> (helpers/order-by [:updated-at :desc])
+                             (helpers/limit n)
+                             (q/all! table))))))))
 
 (defn get-n-latest-before!
     ([table query-relations! before] (get-n-latest-before! table query-relations! default-page-size before))
     ([table query-relations! n before]
      (transaction/execute!
          (fn []
-             (map query-relations!
-                  (->
-                      (helpers/order-by [:updated-at :desc])
-                      (helpers/where [:< :updated-at before])
-                      (helpers/limit n)
-                      (q/all! table)))))))
+             (doall (map query-relations!
+                         (-> (helpers/where [:< :updated-at before])
+                             (helpers/order-by [:updated-at :desc])
+                             (helpers/limit n)
+                             (q/all! table))))))))
 
 (defn get-n-oldest!
     ([table query-relations! n]
      (transaction/execute!
          (fn []
-             (map query-relations!
-                  (->
-                      (helpers/order-by :updated-at)
-                      (helpers/limit n)
-                      (q/all! table)))))))
+             (doall (map query-relations!
+                         (-> (helpers/order-by :updated-at)
+                             (helpers/limit n)
+                             (q/all! table))))))))
 
 (defn get-n-oldest-before!
     ([table query-relations! n before]
      (transaction/execute!
          (fn []
-             (map query-relations!
-                  (->
-                      (helpers/order-by :updated-at)
-                      (helpers/where [:< :updated-at before])
-                      (helpers/limit n)
-                      (q/all! table)))))))
+             (doall (map query-relations!
+                         (-> (helpers/where [:< :updated-at before])
+                             (helpers/order-by :updated-at)
+                             (helpers/limit n)
+                             (q/all! table))))))))
 
 (defn query-comment-relations! [comment]
     (q/load! comment :comment/user :comment/spicy-comment))

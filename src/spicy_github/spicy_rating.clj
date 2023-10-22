@@ -7,7 +7,7 @@
               [spicy-github.model :as model]                ; this must be here so our models get initialized
               [spicy-github.db :as db]
               [taoensso.timbre :as timbre])
-    (:import (java.util Date)))
+    (:import (java.time Instant)))
 
 (defn- load-emoji-config! []
     (-> "emoji-rating-config.edn"
@@ -80,7 +80,7 @@
 
 (defn- forever-rate!
     ([get-fn! map-fn update-at-fn]
-     (forever-rate! get-fn! map-fn update-at-fn (new Date)))
+     (forever-rate! get-fn! map-fn update-at-fn (Instant/now)))
     ([get-fn! map-fn update-at-fn last-processed-input]
      (let [last-processed (atom last-processed-input)]
          (try
@@ -94,7 +94,7 @@
                               (clojure.stacktrace/print-stack-trace e)
                               (timbre/error (str e))))
                      (if (< (count records) db/default-page-size)
-                         (recur (new Date))
+                         (recur (Instant/now))
                          (recur (update-at-fn (last records))))))
              (catch Exception e
                  (timbre/error (str e))
@@ -112,7 +112,7 @@
         (execute #(db/persist-record! %))))
 
 (defn rate-all-comments []
-    (let [now (new Date)]
+    (let [now (Instant/now)]
         (loop [comments (db/get-n-oldest-comments-before! 100 now)]
             (if (empty? comments)
                 nil
@@ -125,9 +125,9 @@
 
 
 
-    (def nowish (new Date))
+    (def nowish (Instant/now))
 
-    (def comments (db/get-n-oldest-comments-before! 10000 (new Date)))
+    (def comments (db/get-n-oldest-comments-before! 10000 (Instant/now)))
 
     (execute-pipeline spicy-comments-xf comments)
 

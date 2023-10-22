@@ -13,7 +13,7 @@
               [spicy-github.util :refer [load-env]]
               [spicy-github.env :refer [spicy-env]]
               [taoensso.timbre :as timbre])
-    (:import (java.util Date)))
+    (:import (java.time Instant)))
 
 (defn- landing-page [request]
     (timbre/info (str request))
@@ -27,7 +27,7 @@
         (map adapters/sanitize-issue-for-api
              (db/get-n-latest-issues-before!
                  (if (nil? before)
-                     (new Date)
+                     (Instant/now)
                      (instant/read-instant-date before))))))
 
 (defn- get-n-latest-issues-before-api! [before]
