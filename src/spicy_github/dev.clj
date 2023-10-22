@@ -23,7 +23,7 @@
             (timbre/debug (str "Processed " table-name " at " start-time))
             (if (== db/default-page-size (count issue-batch))
                 (recur (updated-at-keyword (last issue-batch)))
-                (timbre/info (str "Successfully processed " table-name))))))
+                (timbre/info (str "Successfully remapped " table-name))))))
 
 (defn remap-issues! []
     (remap! db/get-n-latest-issues-before! adapters/parse-issue :issue/github-json-payload :issue/updated-at "issues"))
