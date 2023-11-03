@@ -1,0 +1,2 @@
+{:up ["CREATE INDEX IF NOT EXISTS idx_spicy_comment_total_rating ON spicy_comment (total_rating);"]
+ :down ["DROP INDEX IF EXISTS idx_spicy_comment_total_rating;"]}

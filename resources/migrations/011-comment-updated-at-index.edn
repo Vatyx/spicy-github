@@ -1,0 +1,2 @@
+{:up ["CREATE INDEX IF NOT EXISTS idx_comment_updated_at ON comment (updated_at);"]
+ :down ["DROP INDEX IF EXISTS idx_comment_updated_at;"]}

@@ -45,6 +45,7 @@
                                          :pretty-print  false}
                           :jar          true}]}
     :profiles {:dev          [:project/dev :profiles/dev]
+               :run          [:project/dev :profiles/dev]
                :uberjar      {:aot      :all
                               :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
                :profiles/dev {}
