@@ -17,8 +17,8 @@
     [& args]
     (logging/initialize!)
     (db/initialize!)
-    (.start (Thread. scraper/scrape-all-repositories))
-    (.start (Thread. scraper/process-scraped-repositories))
+    ;(.start (Thread. scraper/scrape-all-repositories))
+    ;(.start (Thread. scraper/process-scraped-repositories))
     (.start (Thread. spicy-rating/forever-rate-issues!))
     (.start (Thread. spicy-rating/forever-rate-comments!))
     ;(when (dev/should-remap-db) (.start (Thread. dev/remap-db!)))
