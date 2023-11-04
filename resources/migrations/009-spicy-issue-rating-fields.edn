@@ -1,0 +1,12 @@
+{:up
+ [[:table/alter {:table :spicy-issue}
+   [:column/add
+    [:controversial-rating :float]
+    [:funny-rating :float]
+    [:agreeable-rating :float]]]]
+ :down
+ [[:table/alter {:table :spicy-issue}
+   [:column/drop
+    [:controversial-rating]
+    [:funny-rating]
+    [:agreeable-rating]]]]}

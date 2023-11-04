@@ -31,25 +31,30 @@
                               (seq reactions-payload)))
                  100))))
 
+(defn- calculate-total-reactions [total-reactions]
+    (if
+        (= 0 total-reactions)
+        (float 0)
+        (min max-score (float (/ total-reactions 30)))))
+
 (defn- rate-total-reactions [reactions-payload]
-    (let [total-reactions (:total_count reactions-payload)]
-        (if
-            (= 0 total-reactions)
-            (float 0)
-            (min max-score (float (/ total-reactions 30))))))
+    ; issues don't have total_count for some reason, so fall back to summing
+    (if-let [total-reactions (:total_count reactions-payload)]
+        (calculate-total-reactions total-reactions)
+        (calculate-total-reactions (apply + (vals reactions-payload)))))
 
 (defn- rate-total-comments [issue]
     (min max-score (float (/ (:issue/comment-count issue) 30))))
 
 (defn- rate-issue [issue]
-    (let [reactions-json (:reactions (parse-json (:issue/github-json-payload issue)))]
+    (let [reactions-json (parse-json (:issue/reaction-json issue))]
         (float (+
                    (rate-emojis reactions-json)
                    (rate-total-comments issue)
                    (rate-total-reactions reactions-json)))))
 
 (defn- rate-comment [comment]
-    (let [reactions-json (:reactions (parse-json (:comment/github-json-payload comment)))]
+    (let [reactions-json (parse-json (:comment/reaction-json comment))]
         (float (+
                    (* comment-offset (rate-emojis reactions-json))
                    (* comment-offset (rate-total-reactions reactions-json))))))
@@ -67,8 +72,12 @@
     (sum-reactions-of-type reactions [:+1 :rocket :heart]))
 
 (defn- map-and-rate-issue [issue]
-    {:spicy-issue/id           (:issue/id issue)
-     :spicy-issue/total-rating (rate-issue issue)})
+    (let [reactions (parse-json (:issue/reaction-json issue))]
+        {:spicy-issue/id                   (:issue/id issue)
+         :spicy-issue/total-rating         (double (rate-issue issue))
+         :spicy-issue/funny-rating         (double (get-funny-rating reactions))
+         :spicy-issue/controversial-rating (double (get-controversial-rating reactions))
+         :spicy-issue/agreeable-rating     (double (get-agreeable-rating reactions))}))
 
 (defn- map-and-rate-comment [comment]
     (let [reactions (parse-json (:comment/reaction-json comment))]

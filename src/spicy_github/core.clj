@@ -21,5 +21,5 @@
     ;(.start (Thread. scraper/process-scraped-repositories))
     (.start (Thread. spicy-rating/forever-rate-issues!))
     (.start (Thread. spicy-rating/forever-rate-comments!))
-    (when (dev/should-remap-db) (.start (Thread. dev/remap-db!)))
+    ;(when (dev/should-remap-db) (.start (Thread. dev/remap-db!)))
     (jetty/run-jetty (app/app) {:port (app-port)}))

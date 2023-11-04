@@ -180,7 +180,8 @@
 (defn- update-issues! [new-issues]
     (if (empty? new-issues)
         (reset! can-load-more false)
-        (reset! issues (concat @issues new-issues)))
+        (reset! issues (let [existing-ids (set (map :issue/id @issues))]
+                           (concat @issues (filter (fn [issue] (not (contains? existing-ids (:issue/id issue)))) new-issues)))))
     (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn)))
 
 (defn- try-initialize-issues! []
@@ -256,4 +257,4 @@
 ; Maybe we got an error on first load, try again until we don't have errors
 (js/setInterval
     try-initialize-issues!
-    1000)
+    10000)

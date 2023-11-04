@@ -1,0 +1,2 @@
+{:up ["CREATE INDEX IF NOT EXISTS idx_issue_updated_at ON issue (updated_at);"]
+ :down ["DROP INDEX IF EXISTS idx_issue_updated_at;"]}
