@@ -132,6 +132,7 @@
 
 ; https://stackoverflow.com/questions/5297396/quick-random-row-selection-in-postgres
 (defn get-n-random!
+    ([table table-name query-relations!] (get-n-random! table table-name query-relations! {}))
     ([table table-name query-relations! query-map] (get-n-random! table table-name query-relations! query-map default-page-size))
     ([table table-name query-relations! query-map n]
      (transaction/execute!
@@ -144,7 +145,7 @@
                  (if (= (float 0.0) record-count)
                      '()
                      (map query-relations!
-                          (-> (merge {:select [:*] :tablesample (format "system(%.6f)" (float (* 100 (/ n record-count))))} query-map)
+                          (-> (merge {:select [:*] :limit n :tablesample (format "system(%.6f)" (float (* 100 (* 3 (/ n record-count)))))} query-map)
                               (q/all! table)))))))))
 
 (defn get-n-latest-before!
@@ -183,12 +184,18 @@
 (defn query-spicy-comment-relations! [spicy-comment]
     (q/load! spicy-comment :spicy-comment/comment))
 
-(defn map-spicy-comment-to-comment [spicy-comment]
-    (query-comment-relations! (:spicy-comment/comment spicy-comment)))
+(defn query-spicy-issue-relations! [spicy-issue]
+    (q/load! spicy-issue :spicy-issue/issue))
 
 (defn query-issue-relations! [issue]
     (let [mapped-issue (q/load! issue :issue/user :issue/comments :issue/spicy-issue)]
         (assoc mapped-issue :issue/comments (map query-comment-relations! (:issue/comments mapped-issue)))))
+
+(defn map-spicy-issue-to-issue [spicy-issue]
+    (query-issue-relations! (:spicy-issue/issue spicy-issue)))
+
+(defn map-spicy-comment-to-comment [spicy-comment]
+    (query-comment-relations! (:spicy-comment/comment spicy-comment)))
 
 (defn get-n-latest-issues!
     ([] (get-n-latest! :issue query-issue-relations!))
@@ -210,9 +217,17 @@
     ([n before] (get-n-oldest-before! :comment query-comment-relations! n before)))
 
 (defn get-n-random-comments!
-    ([] (get-n-random! :comment "comment" query-comment-relations! {}))
+    ([] (get-n-random! :comment "comment" query-comment-relations!))
     ([n] (get-n-random! :comment "comment" query-comment-relations! {}  n)))
 
 (defn get-n-random-comments-above-threshold!
     ([threshold] (map map-spicy-comment-to-comment (get-n-random! :spicy-comment "spicy_comment" query-spicy-comment-relations! {:where [:> :total_rating threshold]})))
     ([threshold n] (map map-spicy-comment-to-comment (get-n-random! :spicy-comment "spicy_comment" query-spicy-comment-relations! {:where [:> :total_rating threshold]} n))))
+
+(defn get-n-random-issues!
+    ([] (get-n-random! :issue "issue" query-issue-relations!))
+    ([n] (get-n-random! :issue "issue" query-issue-relations! {} n)))
+
+(defn get-n-random-issues-above-threshold!
+    ([threshold] (map map-spicy-issue-to-issue (get-n-random! :spicy-issue "spicy_issue" query-spicy-issue-relations! {:where [:> :total_rating threshold]})))
+    ([threshold n] (map map-spicy-issue-to-issue (get-n-random! :spicy-issue "spicy_issue" query-spicy-issue-relations! {:where [:> :total_rating threshold]} n))))
