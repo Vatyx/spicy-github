@@ -10,11 +10,10 @@
               [gungnir.query :as q]
               [taoensso.timbre :as timbre]
               [honey.sql :as sql]
-              [honeysql.core :as sql-core]
               [honey.sql.helpers :as helpers]
               [clojure.stacktrace]
               [next.jdbc :as jdbc]
-        ; this must be here so our models get initialized
+              ; this must be here so our models get initialized
               [spicy-github.model :as model]
               [spicy-github.util :refer :all]))
 
@@ -75,6 +74,12 @@
     (register-db!)
     (migrate-db!))
 
+(sql/register-clause!
+    :tablesample
+    (fn [clause x]
+        (into [(str (sql/sql-kw clause) " " x)]))
+    :where)
+
 (defn persist!
     ([changeset query-by-id! clean-record equality-check?]
      (persist! changeset gungnir.database/*datasource* query-by-id! clean-record equality-check?))
@@ -114,6 +119,8 @@
 
 (def default-page-size 10)
 
+(defn get-by-id! [table id] (q/find! table id))
+
 (defn get-n-latest!
     ([table query-relations!] (get-n-latest! table query-relations! default-page-size))
     ([table query-relations! n]
@@ -123,12 +130,6 @@
                          (-> (helpers/order-by [:updated-at :desc])
                              (helpers/limit n)
                              (q/all! table))))))))
-
-(sql/register-clause!
-    :tablesample
-    (fn [clause x]
-        (into [(str (sql/sql-kw clause) " " x)]))
-    :where)
 
 ; https://stackoverflow.com/questions/5297396/quick-random-row-selection-in-postgres
 (defn get-n-random!
@@ -217,17 +218,32 @@
     ([n before] (get-n-oldest-before! :comment query-comment-relations! n before)))
 
 (defn get-n-random-comments!
-    ([] (get-n-random! :comment "comment" query-comment-relations!))
+    ([] (get-n-random-comments! default-page-size))
     ([n] (get-n-random! :comment "comment" query-comment-relations! {}  n)))
 
 (defn get-n-random-comments-above-threshold!
-    ([threshold] (map map-spicy-comment-to-comment (get-n-random! :spicy-comment "spicy_comment" query-spicy-comment-relations! {:where [:> :total_rating threshold]})))
+    ([threshold] (get-n-random-comments-above-threshold! threshold default-page-size))
     ([threshold n] (map map-spicy-comment-to-comment (get-n-random! :spicy-comment "spicy_comment" query-spicy-comment-relations! {:where [:> :total_rating threshold]} n))))
 
 (defn get-n-random-issues!
-    ([] (get-n-random! :issue "issue" query-issue-relations!))
+    ([] (get-n-random-issues! default-page-size))
     ([n] (get-n-random! :issue "issue" query-issue-relations! {} n)))
 
 (defn get-n-random-issues-above-threshold!
-    ([threshold] (map map-spicy-issue-to-issue (get-n-random! :spicy-issue "spicy_issue" query-spicy-issue-relations! {:where [:> :total_rating threshold]})))
+    ([threshold] (get-n-random-issues-above-threshold! threshold default-page-size))
     ([threshold n] (map map-spicy-issue-to-issue (get-n-random! :spicy-issue "spicy_issue" query-spicy-issue-relations! {:where [:> :total_rating threshold]} n))))
+
+(defn get-n-random-issues-from-comments-above-threshold!
+    ([threshold] (get-n-random-issues-from-comments-above-threshold! threshold default-page-size))
+    ([threshold n] (map query-issue-relations! (map (fn [issue-id] (get-by-id! :issue issue-id))
+                        (map (fn [spicy-comment]
+                            (-> spicy-comment
+                                :spicy-comment/comment
+                                :comment/issue-id))
+                        (get-n-random! :spicy-comment "spicy_comment" query-spicy-comment-relations! {:where [:> :total_rating threshold]} n))))))
+
+(defn accumulate-until-at-least [retrieval-fn n]
+    (loop [result []]
+        (if (>= (count result) n)
+            result
+            (recur (concat result (retrieval-fn))))))
