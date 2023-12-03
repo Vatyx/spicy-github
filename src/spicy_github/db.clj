@@ -124,45 +124,27 @@
                              (helpers/limit n)
                              (q/all! table))))))))
 
-; https://stackoverflow.com/questions/5297396/quick-random-row-selection-in-postgres
-(defn get-n-random!
-    ([model table-name query-relations!] (get-n-random! model table-name query-relations! default-page-size))
-    ([model table-name query-relations! n]
-     (transaction/execute!
-         (fn []
-             (let [db gungnir.database/*datasource*
-                   record-count (:pg_class/reltuples (get
-                                                         (jdbc/execute! db [(format "select reltuples from pg_class where relname='%s'" table-name)])
-                                                         0))]
-                 (if (= (float 0.0) record-count)
-                     '()
-                     (doall (map (fn [record]
-                                     (let [changeset (gungnir.changeset/cast record model)]
-                                         (do
-                                             (println changeset)
-                                             (query-relations! changeset))))
-                                 (jdbc/execute! db [(format "select * from %s tablesample system(%.6f)" table-name (float (* 100 (/ n record-count))))])))
-                     ))))))
-
 (sql/register-clause!
     :tablesample
     (fn [clause x]
         (into [(str (sql/sql-kw clause) " " x)]))
     :where)
 
+; https://stackoverflow.com/questions/5297396/quick-random-row-selection-in-postgres
 (defn get-n-random!
-    ([table table-name query-relations!] (get-n-random! table table-name query-relations! default-page-size))
-    ([table table-name query-relations! n]
+    ([table table-name query-relations! query-map] (get-n-random! table table-name query-relations! query-map default-page-size))
+    ([table table-name query-relations! query-map n]
      (transaction/execute!
          (fn []
              (let [db gungnir.database/*datasource*
-                   record-count (:pg_class/reltuples (get
-                                                         (jdbc/execute! db [(format "select reltuples from pg_class where relname='%s'" table-name)])
-                                                         0))]
+                   record-count (:pg_class/reltuples
+                                    (get
+                                        (jdbc/execute! db [(format "select reltuples from pg_class where relname='%s'" table-name)])
+                                        0))]
                  (if (= (float 0.0) record-count)
                      '()
                      (map query-relations!
-                          (-> {:select [:*] :tablesample (format "system(%.6f)" (float (* 100 (/ n record-count))))}
+                          (-> (merge {:select [:*] :tablesample (format "system(%.6f)" (float (* 100 (/ n record-count))))} query-map)
                               (q/all! table)))))))))
 
 (defn get-n-latest-before!
@@ -198,6 +180,12 @@
 (defn query-comment-relations! [comment]
     (q/load! comment :comment/user :comment/spicy-comment))
 
+(defn query-spicy-comment-relations! [spicy-comment]
+    (q/load! spicy-comment :spicy-comment/comment))
+
+(defn map-spicy-comment-to-comment [spicy-comment]
+    (query-comment-relations! (:spicy-comment/comment spicy-comment)))
+
 (defn query-issue-relations! [issue]
     (let [mapped-issue (q/load! issue :issue/user :issue/comments :issue/spicy-issue)]
         (assoc mapped-issue :issue/comments (map query-comment-relations! (:issue/comments mapped-issue)))))
@@ -222,5 +210,9 @@
     ([n before] (get-n-oldest-before! :comment query-comment-relations! n before)))
 
 (defn get-n-random-comments!
-    ([] (get-n-random! :comment "comment" query-comment-relations!))
-    ([n] (get-n-random! :comment "comment" query-comment-relations! n)))
+    ([] (get-n-random! :comment "comment" query-comment-relations! {}))
+    ([n] (get-n-random! :comment "comment" query-comment-relations! {}  n)))
+
+(defn get-n-random-comments-above-threshold!
+    ([threshold] (map map-spicy-comment-to-comment (get-n-random! :spicy-comment "spicy_comment" query-spicy-comment-relations! {:where [:> :total_rating threshold]})))
+    ([threshold n] (map map-spicy-comment-to-comment (get-n-random! :spicy-comment "spicy_comment" query-spicy-comment-relations! {:where [:> :total_rating threshold]} n))))
