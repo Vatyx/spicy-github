@@ -4,14 +4,16 @@
               [clojure.string :as cs]
               [gungnir.changeset :as c]
               [gungnir.database]
+              [gungnir.model]
               [gungnir.migration]
               [gungnir.transaction :as transaction]
               [gungnir.query :as q]
               [taoensso.timbre :as timbre]
-              [honey.sql]
-              [honeysql.core]
+              [honey.sql :as sql]
+              [honeysql.core :as sql-core]
               [honey.sql.helpers :as helpers]
               [clojure.stacktrace]
+              [next.jdbc :as jdbc]
         ; this must be here so our models get initialized
               [spicy-github.model :as model]
               [spicy-github.util :refer :all]))
@@ -110,7 +112,7 @@
             (timbre/error (str e))
             record)))
 
-(def default-page-size 25)
+(def default-page-size 10)
 
 (defn get-n-latest!
     ([table query-relations!] (get-n-latest! table query-relations! default-page-size))
@@ -121,6 +123,47 @@
                          (-> (helpers/order-by [:updated-at :desc])
                              (helpers/limit n)
                              (q/all! table))))))))
+
+; https://stackoverflow.com/questions/5297396/quick-random-row-selection-in-postgres
+(defn get-n-random!
+    ([model table-name query-relations!] (get-n-random! model table-name query-relations! default-page-size))
+    ([model table-name query-relations! n]
+     (transaction/execute!
+         (fn []
+             (let [db gungnir.database/*datasource*
+                   record-count (:pg_class/reltuples (get
+                                                         (jdbc/execute! db [(format "select reltuples from pg_class where relname='%s'" table-name)])
+                                                         0))]
+                 (if (= (float 0.0) record-count)
+                     '()
+                     (doall (map (fn [record]
+                                     (let [changeset (gungnir.changeset/cast record model)]
+                                         (do
+                                             (println changeset)
+                                             (query-relations! changeset))))
+                                 (jdbc/execute! db [(format "select * from %s tablesample system(%.6f)" table-name (float (* 100 (/ n record-count))))])))
+                     ))))))
+
+(sql/register-clause!
+    :tablesample
+    (fn [clause x]
+        (into [(str (sql/sql-kw clause) " " x)]))
+    :where)
+
+(defn get-n-random!
+    ([table table-name query-relations!] (get-n-random! table table-name query-relations! default-page-size))
+    ([table table-name query-relations! n]
+     (transaction/execute!
+         (fn []
+             (let [db gungnir.database/*datasource*
+                   record-count (:pg_class/reltuples (get
+                                                         (jdbc/execute! db [(format "select reltuples from pg_class where relname='%s'" table-name)])
+                                                         0))]
+                 (if (= (float 0.0) record-count)
+                     '()
+                     (map query-relations!
+                          (-> {:select [:*] :tablesample (format "system(%.6f)" (float (* 100 (/ n record-count))))}
+                              (q/all! table)))))))))
 
 (defn get-n-latest-before!
     ([table query-relations! before] (get-n-latest-before! table query-relations! default-page-size before))
@@ -177,3 +220,7 @@
 
 (defn get-n-oldest-comments-before!
     ([n before] (get-n-oldest-before! :comment query-comment-relations! n before)))
+
+(defn get-n-random-comments!
+    ([] (get-n-random! :comment "comment" query-comment-relations!))
+    ([n] (get-n-random! :comment "comment" query-comment-relations! n)))
