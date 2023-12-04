@@ -97,7 +97,8 @@
                           :comment/spicy-rating (if
                                                     (nil? (:comment/spicy-comment comment))
                                                     0
-                                                    (-> comment :comment/spicy-comment :spicy-comment/rating))}]
+                                                    (-> comment :comment/spicy-comment :spicy-comment/total-rating))
+                          :comment/reaction     (parse-json (:comment/reaction-json comment))}]
         (if (nil? parent-comment-id)
             mapped-comment
             (conj mapped-comment {:comment/parent-comment parent-comment-id}))))
@@ -109,11 +110,11 @@
      :issue/body         (:issue/body issue)
      :issue/user         (sanitize-user-for-api (:issue/user issue))
      :issue/comments     (map sanitize-comment-for-api (:issue/comments issue))
-     :issue/updated-at   (:issue/updated-at issue)
      :issue/spicy-rating (if
                              (nil? (:issue/spicy-issue issue))
                              0
-                             (-> issue :issue/spicy-issue :spicy-issue/rating))})
+                             (-> issue :issue/spicy-issue :spicy-issue/total-rating))
+     :issue/reaction     (parse-json (:issue/reaction-json issue))})
 
 (comment
 
