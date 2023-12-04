@@ -105,7 +105,7 @@
      (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
       [:div (stylefy/use-style comment-body-style)
-       [:md-block (:comment/body comment)]]]])
+       [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
 
 (defn- get-ordered-comments [comments]
     (let [ordered-by-date-comments (sort-by :comment/updated-at comments)
