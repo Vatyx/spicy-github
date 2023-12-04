@@ -21,7 +21,7 @@
      :headers {"Content-Type" "text/html"}
      :body    frontend/index-html})
 
-(def minimum-threshold 0)
+(def minimum-threshold 0.5)
 
 (defn get-n-random-issues [n]
     (timbre/info "Received n-random issues with n: " n)
