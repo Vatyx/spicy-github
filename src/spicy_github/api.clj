@@ -21,6 +21,17 @@
      :headers {"Content-Type" "text/html"}
      :body    frontend/index-html})
 
+(def minimum-threshold 0.5)
+
+(defn get-n-random-issues [n]
+    (timbre/info "Received n-random issues with n: " n)
+    (generate-string
+        (map adapters/sanitize-issue-for-api
+             (if (nil? n)
+                 (db/accumulate-until-at-least (partial db/get-n-random-issues-from-comments-above-threshold! minimum-threshold db/default-page-size) db/default-page-size)
+                 (let [wrapped-count (max db/default-page-size (min 50 (parse-long n)))]
+                     (db/accumulate-until-at-least (partial db/get-n-random-issues-from-comments-above-threshold! minimum-threshold wrapped-count) wrapped-count))))))
+
 (defn get-n-latest-issues-before! [before]
     (timbre/info "Received n-latest-issues-before:" (str before))
     (generate-string
@@ -35,16 +46,27 @@
      :headers {"Content-Type" "application/json"}
      :body    (get-n-latest-issues-before! before)})
 
+(defn- get-n-random-issues-api! [n]
+    {:status  200
+     :headers {"Content-Type" "application/json"}
+     :body    (get-n-random-issues n)})
+
 (defroutes app-routes
            (GET "/" [] landing-page)
            (GET "/latest-issues/:before" [before] (get-n-latest-issues-before-api! before))
+           (GET "/random-issues/" [] (get-n-random-issues-api! (str db/default-page-size)))
+           (GET "/random-issues/:n" [n] (get-n-random-issues-api! n))
            (route/resources "/")
            (route/not-found "Not Found"))
 
-(defn app [] (let [reload-server (parse-boolean (load-env :reload-server "RELOAD_SERVER" :RELOAD_SERVER "false"))]
-                 (if (nil? reload-server)
-                     (wrap-defaults app-routes site-defaults)
-                     (if reload-server
-                         (wrap-reload (wrap-defaults app-routes site-defaults))
-                         (wrap-defaults app-routes site-defaults))
-                     )))
+(defn- app-with-defaults [reload-server]
+    (do (timbre/info (str "Loading application (reload server:" reload-server ")"))
+        (wrap-defaults app-routes site-defaults)))
+
+(defn app []
+    (let [reload-server (parse-boolean (load-env :reload-server "RELOAD_SERVER" :RELOAD_SERVER "false"))]
+        (if (nil? reload-server)
+            (app-with-defaults false)
+            (if reload-server
+                (wrap-reload (app-with-defaults true))
+                (app-with-defaults false)))))

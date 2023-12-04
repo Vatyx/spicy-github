@@ -130,9 +130,7 @@
       [:summary [:div (stylefy/use-style issue-container-style)
                  [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]
                  (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
-      (vec (conj (->> (:issue/comments issue) get-ordered-comments (map get-comment-html)) :div))
-      ]
-     ])
+      (vec (conj (->> (:issue/comments issue) get-ordered-comments (map get-comment-html)) :div))]])
 
 (defn- get-issues-html [issues]
     [:div (vec (conj (map get-issue-html issues) :div))])
@@ -169,6 +167,8 @@
                                            (apply f args))
                                       threshold))))))
 
+(def minimum-issues 10)
+
 (def issues (atom []))
 
 (def can-load-more (atom true))
@@ -177,20 +177,33 @@
 
 (def refresh-issues-fn (atom nil))
 
+(def issue-initialization (atom nil))
+
+(defn- has-enough-issues []
+    (>= (count @issues) minimum-issues))
+
 (defn- update-issues! [new-issues]
     (if (empty? new-issues)
         (reset! can-load-more false)
-        (reset! issues (let [existing-ids (set (map :issue/id @issues))]
-                           (concat @issues (filter (fn [issue] (not (contains? existing-ids (:issue/id issue)))) new-issues)))))
-    (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn)))
+        (reset! issues (let [existing-ids (set (map :issue/id @issues))
+                             new-ids (atom (set {}))]
+                           (concat @issues (filter (fn [issue]
+                                                       (let [issue-id (:issue/id issue)
+                                                             new-issue (not (or (contains? existing-ids issue-id) (contains? @new-ids issue-id)))]
+                                                           (reset! new-ids (conj @new-ids issue-id))
+                                                           new-issue)) new-issues)))))
+    (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn))
+    (when (not (has-enough-issues)) (@issue-initialization)))
 
 (defn- try-initialize-issues! []
-    (when (empty? @issues)
-        (api/get-n-issues-before update-issues! is-loading-issues)))
+    (when (not (has-enough-issues))
+        (api/get-issues update-issues! is-loading-issues)))
+
+(reset! issue-initialization try-initialize-issues!)
 
 (defn- load-fn []
     (reset! is-loading-issues true)
-    (try (api/get-n-issues-before-from-issues update-issues! @issues is-loading-issues) (catch js/Object _ (reset! is-loading-issues false)))
+    (try (api/get-issues update-issues! is-loading-issues) (catch js/Object _ (reset! is-loading-issues false)))
     (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn)))
 
 (def listener-fn (atom nil))
@@ -252,7 +265,7 @@
 (reset! refresh-issues-fn mount-issues-component!)
 
 ; Seed initial issues
-(api/get-n-issues-before update-issues! is-loading-issues)
+(try-initialize-issues!)
 
 ; Maybe we got an error on first load, try again until we don't have errors
 (js/setInterval
