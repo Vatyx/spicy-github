@@ -51,6 +51,11 @@
      :margin           :auto
      :flex-direction   :column})
 
+(def md-block-wrapper {:max-width  :900px
+                       :max-height :1600px
+                       :padding    :10px
+                       :overflow   :auto})
+
 (def issue-with-comments-style (conj issue-without-comments-style {:cursor :pointer}))
 
 (def issue-body-style {:flex    :9
@@ -72,7 +77,7 @@
                              :margin-bottom    :10px
                              :margin-top       :10px
                              :margin-right     :10px
-                             :margin-left      :auto})
+                             :margin-left      :10px})
 
 (def user-image-style {:background-color :#fff
                        :border-radius    :50%
@@ -128,7 +133,7 @@
       [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/html-url issue)}) (:issue/title issue)]]
      [:details
       [:summary [:div (stylefy/use-style issue-container-style)
-                 [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]
+                 [:div (stylefy/use-style md-block-wrapper) [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]]
                  (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
       (vec (conj (->> (:issue/comments issue) get-ordered-comments (map get-comment-html)) :div))]])
 
