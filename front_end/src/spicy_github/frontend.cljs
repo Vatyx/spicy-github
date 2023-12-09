@@ -201,9 +201,9 @@
 
 (def is-loading-issues (atom false))
 
-(def refresh-issues-fn (atom #()))
+(def refresh-issues-fn (atom nil))
 
-(def issue-initialization (atom #()))
+(def issue-initialization (atom nil))
 
 (defn- has-enough-issues []
     (>= (count @issues) minimum-issues))
@@ -232,7 +232,7 @@
     (try (api/get-issues update-issues! is-loading-issues) (catch js/Object _ (reset! is-loading-issues false)))
     (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn)))
 
-(def listener-fn (atom #()))
+(def listener-fn (atom nil))
 
 (defn- detach-scroll-listener [state]
     (when @listener-fn
