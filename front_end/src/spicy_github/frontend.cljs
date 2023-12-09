@@ -51,8 +51,15 @@
      :margin           :auto
      :flex-direction   :column})
 
-(def hidden-style {:max-width        :20px
-                   :max-height       :20px
+(def hidden-size :15px)
+
+(def hidden-style {:max-width        hidden-size
+                   :max-height       hidden-size
+                   :min-width        hidden-size
+                   :min-height       hidden-size
+                   :margin           :auto
+                   :margin-top       :5px
+                   :margin-bottom    :5px
                    :background-color :#fff
                    :border-radius    :50%})
 
@@ -107,9 +114,13 @@
 
 (def spicy-comments (atom {}))
 
+(def refresh-issues-fn (atom nil))
+
 (defn- swap-is-selected [comment-id]
     (let [existing-value (get @spicy-comments comment-id false)]
-        (reset! spicy-comments (merge @spicy-comments {comment-id (not existing-value)}))))
+        (reset! spicy-comments (merge @spicy-comments {comment-id (not existing-value)}))
+        (when (not (nil? @refresh-issues-fn))
+            (@refresh-issues-fn))))
 
 (defn- get-static-comment-html [comment]
     [:div (stylefy/use-style comment-style) (-> comment :comment/user get-user-html)
@@ -201,7 +212,6 @@
 
 (def is-loading-issues (atom false))
 
-(def refresh-issues-fn (atom nil))
 
 (def issue-initialization (atom nil))
 
