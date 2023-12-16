@@ -43,6 +43,7 @@
                                          :optimizations :advanced
                                          :pretty-print  false}
                           :jar          true}]}
+    :clean-targets ^{:protect false} [:target-path "resources/public/javascript/front_end.js"]
     :profiles {:dev          [:project/dev :profiles/dev]
                :run          [:project/dev :profiles/dev]
                :uberjar      {:aot      :all
