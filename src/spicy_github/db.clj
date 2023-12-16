@@ -228,12 +228,13 @@
 
 (defn get-n-random-issues-from-comments-above-threshold!
     ([threshold] (get-n-random-issues-from-comments-above-threshold! threshold default-page-size))
-    ([threshold n] (map query-issue-relations! (map (fn [issue-id] (get-by-id! :issue issue-id))
-                                                    (map (fn [spicy-comment]
-                                                             (-> spicy-comment
-                                                                 :spicy-comment/comment
-                                                                 :comment/issue-id))
-                                                         (get-n-random! :spicy-comment query-spicy-comment-relations! {:where [:> :total_rating threshold]} n))))))
+    ([threshold n] (map query-issue-relations!
+                        (map (fn [issue-id] (get-by-id! :issue issue-id))
+                             (map (fn [spicy-comment]
+                                      (-> spicy-comment
+                                          :spicy-comment/comment
+                                          :comment/issue-id))
+                                  (get-n-random! :spicy-comment query-spicy-comment-relations! {:where [:> :total_rating threshold]} n))))))
 
 (defn accumulate-until-at-least [retrieval-fn n]
     (loop [result []]
