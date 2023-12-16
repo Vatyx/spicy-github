@@ -117,7 +117,7 @@
             (timbre/error (str e))
             record)))
 
-(def default-page-size 10)
+(def default-page-size 5)
 
 (defn get-by-id! [table id] (q/find! table id))
 
@@ -139,7 +139,7 @@
      (transaction/execute!
          (fn []
              (doall (map query-relations!
-                         (-> (merge {:select [:*] :limit n :tablesample "system(0.3)"} query-map)
+                         (-> (merge {:select [:*] :limit n :tablesample "system(0.075)"} query-map)
                              (q/all! table))))))))
 
 (defn get-n-latest-before!
