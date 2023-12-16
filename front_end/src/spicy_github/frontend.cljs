@@ -51,6 +51,23 @@
      :margin           :auto
      :flex-direction   :column})
 
+(def hidden-size :15px)
+
+(def hidden-style {:max-width        hidden-size
+                   :max-height       hidden-size
+                   :min-width        hidden-size
+                   :min-height       hidden-size
+                   :margin           :auto
+                   :margin-top       :5px
+                   :margin-bottom    :5px
+                   :background-color :#fff
+                   :border-radius    :50%})
+
+(def md-block-wrapper {:max-width  :900px
+                       :max-height :1600px
+                       :padding    :10px
+                       :overflow   :auto})
+
 (def issue-with-comments-style (conj issue-without-comments-style {:cursor :pointer}))
 
 (def issue-body-style {:flex    :9
@@ -72,7 +89,7 @@
                              :margin-bottom    :10px
                              :margin-top       :10px
                              :margin-right     :10px
-                             :margin-left      :auto})
+                             :margin-left      :10px})
 
 (def user-image-style {:background-color :#fff
                        :border-radius    :50%
@@ -95,17 +112,40 @@
     ([user style]
      [:img (merge (stylefy/use-style style) {:src (:user/avatar-url user)})]))
 
-(defn- get-comment-html [comment]
-    [:div (stylefy/use-style comment-style)
-     (-> comment :comment/user get-user-html)
+(def spicy-comments (atom {}))
+
+(def refresh-issues-fn (atom nil))
+
+(defn- swap-is-selected [comment-id]
+    (let [existing-value (get @spicy-comments comment-id false)]
+        (reset! spicy-comments (merge @spicy-comments {comment-id (not existing-value)}))
+        (when (not (nil? @refresh-issues-fn))
+            (@refresh-issues-fn))))
+
+(defn- get-static-comment-html [comment]
+    [:div (stylefy/use-style comment-style) (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
       [:div (stylefy/use-style comment-body-style)
-       [:md-block (:comment/body comment)]]]])
+       [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
+
+(defn- get-comment-html [comment comment-id]
+    [:div (stylefy/use-style comment-style {:id comment-id :on-click #(swap-is-selected comment-id)}) (-> comment :comment/user get-user-html)
+     [:div (stylefy/use-style comment-container-style)
+      [:div (stylefy/use-style comment-body-style)
+       [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
+
+(defn- get-spicy-comment-html [comment]
+    (let [is-spicy (>= (get comment :comment/spicy-rating 0) 5)
+          comment-id (:comment/id comment)]
+        (if is-spicy
+            (get-static-comment-html comment)
+            (if (get @spicy-comments comment-id false)
+                (get-comment-html comment comment-id)
+                [:div (stylefy/use-style hidden-style {:id comment-id :on-click #(swap-is-selected comment-id)})]))))
 
 (defn- get-ordered-comments [comments]
-    (let [ordered-by-date-comments (sort-by :comment/updated-at comments)
-          root-comment (last (filter (fn [comment] (-> comment :comment/parent-comment nil?)) ordered-by-date-comments))
-          comments-with-parents (filter (fn [comment] (-> comment :comment/parent-comment nil? not)) ordered-by-date-comments)
+    (let [root-comment (last (filter (fn [comment] (-> comment :comment/parent-comment nil?)) comments))
+          comments-with-parents (filter (fn [comment] (-> comment :comment/parent-comment nil? not)) comments)
           comments-by-parent-id (into {} (map vector (map :comment/parent-comment comments-with-parents) comments-with-parents))]
         (loop [chain []]
             (if (empty? chain)
@@ -115,10 +155,7 @@
                 (let [matching (get comments-by-parent-id (:comment/id (last chain)))]
                     (if (nil? matching)
                         chain
-                        (recur (conj chain matching)))
-                    )
-                ))
-        ))
+                        (recur (conj chain matching))))))))
 
 (defn- get-issue-html [issue]
     [:div (if (empty? (:issue/comments issue))
@@ -128,9 +165,9 @@
       [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/html-url issue)}) (:issue/title issue)]]
      [:details
       [:summary [:div (stylefy/use-style issue-container-style)
-                 [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]
+                 [:div (stylefy/use-style md-block-wrapper) [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]]
                  (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
-      (vec (conj (->> (:issue/comments issue) get-ordered-comments (map get-comment-html)) :div))]])
+      (vec (conj (->> (:issue/comments issue) get-ordered-comments (map get-spicy-comment-html)) :div))]])
 
 (defn- get-issues-html [issues]
     [:div (vec (conj (map get-issue-html issues) :div))])
@@ -175,7 +212,6 @@
 
 (def is-loading-issues (atom false))
 
-(def refresh-issues-fn (atom nil))
 
 (def issue-initialization (atom nil))
 

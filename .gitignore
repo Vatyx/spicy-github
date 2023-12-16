@@ -20,3 +20,4 @@ projectFilesBackup*
 .lein-env
 resources/public/javascript/front_end.js
 /logs/
+/out/
