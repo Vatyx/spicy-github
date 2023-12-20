@@ -98,10 +98,12 @@
 
 (def highly-rated-comment-model
     [:map
-     {:belongs-to {:highly-rated-comment/comment {:model :comment :foreign-key :highly-rated-comment/id}}}
+     {:belongs-to {:highly-rated-comment/comment {:model :comment :foreign-key :highly-rated-comment/id}
+                   :highly-rated-comment/issue {:model :issue :foreign-key :highly-rated-comment/issue-id}}}
      [:highly-rated-comment/id {:primary-key true} string?]
      [:highly-rated-comment/total-rating float?]
      [:highly-rated-comment/created-at {:auto true} inst?]
+     [:highly-rated-comment/issue-id string?]
      [:highly-rated-comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
 (defn register-models! []
