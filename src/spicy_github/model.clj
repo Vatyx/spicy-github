@@ -54,7 +54,8 @@
 (def issue-model
     [:map
      {:has-one    {:issue/spicy-issue {:model :spicy-issue :foreign-key :spicy-issue/id}}
-      :has-many   {:issue/comments {:model :comment :foreign-key :comment/issue-id}}
+      :has-many   {:issue/comments              {:model :comment :foreign-key :comment/issue-id}
+                   :issue/highly-rated-comments {:model :highly-rated-comment :foreign-key :highly-rated-comment/issue-id}}
       :belongs-to {:issue/user       {:model :user :foreign-key :issue/user-id}
                    :issue/repository {:model :repository :foreign-key :issue/repository-id}}}
      [:issue/id {:primary-key true} string?]
@@ -99,7 +100,7 @@
 (def highly-rated-comment-model
     [:map
      {:belongs-to {:highly-rated-comment/comment {:model :comment :foreign-key :highly-rated-comment/id}
-                   :highly-rated-comment/issue {:model :issue :foreign-key :highly-rated-comment/issue-id}}}
+                   :highly-rated-comment/issue   {:model :issue :foreign-key :highly-rated-comment/issue-id}}}
      [:highly-rated-comment/id {:primary-key true} string?]
      [:highly-rated-comment/total-rating float?]
      [:highly-rated-comment/created-at {:auto true} inst?]

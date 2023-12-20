@@ -90,7 +90,8 @@
 
 (defn- map-and-rate-spicy-comment [spicy-comment]
     {:highly-rated-comment/id           (:spicy-comment/id spicy-comment)
-     :highly-rated-comment/total-rating (double (:spicy-comment/total-rating spicy-comment))})
+     :highly-rated-comment/total-rating (double (:spicy-comment/total-rating spicy-comment))
+     :highly-rated-comment/issue-id     (-> spicy-comment :spicy-comment/comment :comment/issue-id)})
 
 (defn- forever-run!
     ([get-fn! map-fn update-at-fn]

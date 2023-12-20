@@ -21,6 +21,6 @@
     ;(.start (Thread. scraper/process-scraped-repositories))
     ;(.start (Thread. spicy-rating/forever-rate-issues!))
     ;(.start (Thread. spicy-rating/forever-rate-comments!))
-    (.start (Thread. spicy-rating/forever-migrate-highly-rated-comments!))
+    ;(.start (Thread. spicy-rating/forever-migrate-highly-rated-comments!))
     ;(when (dev/should-remap-db) (.start (Thread. dev/remap-db!)))
     (jetty/run-jetty (app/app) {:port (app-port)}))
