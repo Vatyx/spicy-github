@@ -135,7 +135,7 @@
        [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
 
 (defn- get-spicy-comment-html [comment]
-    (let [is-spicy (>= (get comment :comment/spicy-rating 0) 5)
+    (let [is-spicy (>= (get comment :comment/spicy-rating 0) 3.5)
           comment-id (:comment/id comment)]
         (if is-spicy
             (get-static-comment-html comment)
