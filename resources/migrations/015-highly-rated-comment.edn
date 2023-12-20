@@ -1,0 +1,8 @@
+{:up
+ [[:table/create {:table :highly-rated-comment}
+   [:column/add
+    [:id {:primary-key true :references :comment/id} :string]
+    [:total-rating :float]
+    [:gungnir/timestamps]]]]
+ :down
+ [[:table/drop :highly-rated-comment]]}

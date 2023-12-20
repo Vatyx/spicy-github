@@ -1,6 +1,7 @@
 (ns spicy-github.spicy-rating
     (:gen-class)
     (:require [clojure.edn :as edn]
+              [honey.sql.helpers :as helpers]
               [spicy-github.util :refer :all]
               [clojure.stacktrace]
               [gungnir.transaction :as transaction]
@@ -17,7 +18,7 @@
 (def emoji-config (load-emoji-config!))
 (def max-score (float 33))
 (def comment-offset (/ 50 33))
-(def db-page-size 100)
+(def db-page-size 250)
 
 (defn- rate-emojis [reactions-payload]
     (min max-score
@@ -87,9 +88,13 @@
          :spicy-comment/controversial-rating (double (get-controversial-rating reactions))
          :spicy-comment/agreeable-rating     (double (get-agreeable-rating reactions))}))
 
-(defn- forever-rate!
+(defn- map-and-rate-spicy-comment [spicy-comment]
+    {:highly-rated-comment/id           (:spicy-comment/id spicy-comment)
+     :highly-rated-comment/total-rating (double (:spicy-comment/total-rating spicy-comment))})
+
+(defn- forever-run!
     ([get-fn! map-fn update-at-fn]
-     (forever-rate! get-fn! map-fn update-at-fn (Instant/now)))
+     (forever-run! get-fn! map-fn update-at-fn (Instant/now)))
     ([get-fn! map-fn update-at-fn last-processed-input]
      (let [last-processed (atom last-processed-input)]
          (try
@@ -102,18 +107,46 @@
                           (catch Exception e
                               (clojure.stacktrace/print-stack-trace e)
                               (timbre/error (str e))))
-                     (if (< (count records) db/default-page-size)
+                     (if (< (count records) db-page-size)
                          (recur (Instant/now))
                          (recur (update-at-fn (last records))))))
              (catch Exception e
                  (timbre/error (str e))
-                 (forever-rate! get-fn! map-fn update-at-fn @last-processed))))))
+                 (forever-run! get-fn! map-fn update-at-fn @last-processed)))))
+    ([get-fn! map-fn update-at-fn last-processed-input where-query]
+     (let [last-processed (atom last-processed-input)]
+         (try
+             (loop [current-time @last-processed]
+                 (reset! last-processed current-time)
+                 (let [records (get-fn! db-page-size current-time where-query)
+                       spicy-records (doall (map map-fn records))]
+                     (try (doall (map db/persist-record! spicy-records))
+                          (Thread/sleep (int (rand 5000)))
+                          (catch Exception e
+                              (clojure.stacktrace/print-stack-trace e)
+                              (timbre/error (str e))))
+                     (if (< (count records) db-page-size)
+                         (recur (Instant/now))
+                         (recur (update-at-fn (last records))))))
+             (catch Exception e
+                 (timbre/error (str e))
+                 (forever-run! get-fn! map-fn update-at-fn @last-processed))))))
 
 (defn forever-rate-issues! []
-    (forever-rate! db/get-n-latest-issues-before! map-and-rate-issue :issue/updated-at))
+    (forever-run! db/get-n-latest-issues-before! map-and-rate-issue :issue/updated-at))
+
+(def minimum-highly-rated-threshold (float 3.5))
 
 (defn forever-rate-comments! []
-    (forever-rate! db/get-n-latest-comments-before! map-and-rate-comment :comment/updated-at))
+    (forever-run! db/get-n-latest-comments-before! map-and-rate-comment :comment/updated-at))
+
+(defn forever-migrate-highly-rated-comments! []
+    (forever-run!
+        db/get-n-latest-spicy-comments-before!
+        map-and-rate-spicy-comment
+        :spicy-comment/updated-at
+        (Instant/now)
+        (helpers/where [:>= :total-rating minimum-highly-rated-threshold])))
 
 (def spicy-comments-xf
     (comp

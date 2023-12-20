@@ -21,16 +21,16 @@
      :headers {"Content-Type" "text/html"}
      :body    frontend/index-html})
 
-(def minimum-threshold 5)
+(def minimum-count 10)
 
 (defn get-n-random-issues [n]
     (timbre/info "Received n-random issues with n: " n)
     (generate-string
         (map adapters/sanitize-issue-for-api
              (if (nil? n)
-                 (db/accumulate-until-at-least (partial db/get-n-random-issues-from-comments-above-threshold! minimum-threshold db/default-page-size) db/default-page-size)
-                 (let [wrapped-count (max db/default-page-size (min 50 (parse-long n)))]
-                     (db/accumulate-until-at-least (partial db/get-n-random-issues-from-comments-above-threshold! minimum-threshold wrapped-count) wrapped-count))))))
+                 (db/accumulate-until-at-least (partial db/get-n-random-issues-from-highly-rated-comments! minimum-count) minimum-count)
+                 (let [wrapped-count (max minimum-count (min 50 (parse-long n)))]
+                     (db/accumulate-until-at-least (partial db/get-n-random-issues-from-highly-rated-comments! wrapped-count) wrapped-count))))))
 
 (defn get-n-latest-issues-before! [before]
     (timbre/info "Received n-latest-issues-before:" (str before))
@@ -54,7 +54,7 @@
 (defroutes app-routes
            (GET "/" [] landing-page)
            (GET "/latest-issues/:before" [before] (get-n-latest-issues-before-api! before))
-           (GET "/random-issues/" [] (get-n-random-issues-api! (str db/default-page-size)))
+           (GET "/random-issues/" [] (get-n-random-issues-api! (str minimum-count)))
            (GET "/random-issues/:n" [n] (get-n-random-issues-api! n))
            (route/resources "/")
            (route/not-found "Not Found"))

@@ -31,8 +31,9 @@
 
 (def comment-model
     [:map
-     {:has-one    {:comment/parent        {:model :comment :foreign-key :comment/parent-comment}
-                   :comment/spicy-comment {:model :spicy-comment :foreign-key :spicy-comment/id}}
+     {:has-one    {:comment/parent               {:model :comment :foreign-key :comment/parent-comment}
+                   :comment/spicy-comment        {:model :spicy-comment :foreign-key :spicy-comment/id}
+                   :comment/highly-rated-comment {:model :highly-rated-comment :foreign-key :highly-rated-comment/id}}
       :belongs-to {:comment/user  {:model :user :foreign-key :comment/user-id}
                    :comment/issue {:model :issue :foreign-key :comment/issue-id}}}
      [:comment/id {:primary-key true} string?]
@@ -95,12 +96,21 @@
      [:spicy-comment/created-at {:auto true} inst?]
      [:spicy-comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
+(def highly-rated-comment-model
+    [:map
+     {:belongs-to {:highly-rated-comment/comment {:model :comment :foreign-key :highly-rated-comment/id}}}
+     [:highly-rated-comment/id {:primary-key true} string?]
+     [:highly-rated-comment/total-rating float?]
+     [:highly-rated-comment/created-at {:auto true} inst?]
+     [:highly-rated-comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
+
 (defn register-models! []
-    (gungnir.model/register! {:repository    repository-model
-                              :issue         issue-model
-                              :user          user-model
-                              :comment       comment-model
-                              :spicy-comment spicy-comment-model
-                              :spicy-issue   spicy-issue-model}))
+    (gungnir.model/register! {:repository           repository-model
+                              :issue                issue-model
+                              :user                 user-model
+                              :comment              comment-model
+                              :spicy-comment        spicy-comment-model
+                              :spicy-issue          spicy-issue-model
+                              :highly-rated-comment highly-rated-comment-model}))
 
 (register-models!)

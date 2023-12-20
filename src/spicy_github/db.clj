@@ -117,7 +117,7 @@
             (timbre/error (str e))
             record)))
 
-(def default-page-size 5)
+(def default-page-size 100)
 
 (defn get-by-id! [table id] (q/find! table id))
 
@@ -139,7 +139,7 @@
      (transaction/execute!
          (fn []
              (doall (map query-relations!
-                         (-> (merge {:select [:*] :limit n :tablesample "system(0.075)"} query-map)
+                         (-> (merge {:select [:*] :limit n :tablesample "system(0.01)"} query-map)
                              (q/all! table))))))))
 
 (defn get-n-latest-before!
@@ -151,7 +151,18 @@
                          (-> (helpers/where [:< :updated-at before])
                              (helpers/order-by [:updated-at :desc])
                              (helpers/limit n)
+                             (q/all! table)))))))
+    ([table query-relations! n before where-clause]
+     (transaction/execute!
+         (fn []
+             (doall (map query-relations!
+                         (-> where-clause
+                             (helpers/where [:< :updated-at before])
+                             (helpers/order-by [:updated-at :desc])
+                             (helpers/limit n)
                              (q/all! table))))))))
+
+
 
 (defn get-n-oldest!
     ([table query-relations! n]
@@ -177,6 +188,9 @@
 
 (defn query-spicy-comment-relations! [spicy-comment]
     (q/load! spicy-comment :spicy-comment/comment))
+
+(defn query-highly-rated-comment-relations! [highly-rated-comment]
+    (q/load! highly-rated-comment :highly-rated-comment/comment))
 
 (defn query-spicy-issue-relations! [spicy-issue]
     (q/load! spicy-issue :spicy-issue/issue))
@@ -207,6 +221,11 @@
     ([before] (get-n-latest-before! :comment query-comment-relations! before))
     ([n before] (get-n-latest-before! :comment query-comment-relations! n before)))
 
+(defn get-n-latest-spicy-comments-before!
+    ([before] (get-n-latest-before! :spicy-comment query-spicy-comment-relations! before))
+    ([n before] (get-n-latest-before! :spicy-comment query-spicy-comment-relations! n before))
+    ([n before where-query] (get-n-latest-before! :spicy-comment query-spicy-comment-relations! n before where-query)))
+
 (defn get-n-oldest-comments-before!
     ([n before] (get-n-oldest-before! :comment query-comment-relations! n before)))
 
@@ -226,15 +245,14 @@
     ([threshold] (get-n-random-issues-above-threshold! threshold default-page-size))
     ([threshold n] (map map-spicy-issue-to-issue (get-n-random! :spicy-issue query-spicy-issue-relations! {:where [:> :total_rating threshold]} n))))
 
-(defn get-n-random-issues-from-comments-above-threshold!
-    ([threshold] (get-n-random-issues-from-comments-above-threshold! threshold default-page-size))
-    ([threshold n] (map query-issue-relations!
+(defn get-n-random-issues-from-highly-rated-comments!
+    ([n] (map query-issue-relations!
                         (map (fn [issue-id] (get-by-id! :issue issue-id))
                              (map (fn [spicy-comment]
                                       (-> spicy-comment
                                           :spicy-comment/comment
                                           :comment/issue-id))
-                                  (get-n-random! :spicy-comment query-spicy-comment-relations! {:where [:> :total_rating threshold]} n))))))
+                                  (get-n-random! :highly-rated-comment query-highly-rated-comment-relations! {} n))))))
 
 (defn accumulate-until-at-least [retrieval-fn n]
     (loop [result []]
