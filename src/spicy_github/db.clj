@@ -248,11 +248,10 @@
 (defn get-n-random-issues-from-highly-rated-comments!
     ([n] (map query-issue-relations!
                         (map (fn [issue-id] (get-by-id! :issue issue-id))
-                             (map (fn [spicy-comment]
-                                      (-> spicy-comment
-                                          :spicy-comment/comment
-                                          :comment/issue-id))
-                                  (get-n-random! :highly-rated-comment query-highly-rated-comment-relations! {} n))))))
+                             (map (fn [comment] (:comment/issue-id comment))
+                                  (map (fn [highly-rated-comment]
+                                           (get-by-id! :comment (:highly-rated-comment/id highly-rated-comment)))
+                                       (get-n-random! :highly-rated-comment query-highly-rated-comment-relations! {} n)))))))
 
 (defn accumulate-until-at-least [retrieval-fn n]
     (loop [result []]
