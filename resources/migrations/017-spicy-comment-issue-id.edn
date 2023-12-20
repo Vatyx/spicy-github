@@ -1,0 +1,8 @@
+{:up
+ [[:table/alter {:table :spicy-comment}
+   [:column/add
+    [:issue-id {:foreign-key true :references :issue/id :optional true} :string]]]]
+ :down
+ [[:table/alter {:table :spicy-comment}
+   [:column/drop
+    [:issue-id]]]]}

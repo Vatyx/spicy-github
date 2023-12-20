@@ -86,7 +86,8 @@
          :spicy-comment/total-rating         (double (rate-comment comment))
          :spicy-comment/funny-rating         (double (get-funny-rating reactions))
          :spicy-comment/controversial-rating (double (get-controversial-rating reactions))
-         :spicy-comment/agreeable-rating     (double (get-agreeable-rating reactions))}))
+         :spicy-comment/agreeable-rating     (double (get-agreeable-rating reactions))
+         :spicy-comment/issue-id             (:comment/issue-id comment)}))
 
 (defn- map-and-rate-spicy-comment [spicy-comment]
     {:highly-rated-comment/id           (:spicy-comment/id spicy-comment)
@@ -114,7 +115,7 @@
              (catch Exception e
                  (timbre/error (str e))
                  (forever-run! get-fn! map-fn update-at-fn @last-processed)))))
-    ([get-fn! map-fn update-at-fn last-processed-input where-query]
+    ([get-fn! map-fn update-at-fn last-processed-input where-query delay]
      (let [last-processed (atom last-processed-input)]
          (try
              (loop [current-time @last-processed]
@@ -122,7 +123,7 @@
                  (let [records (get-fn! db-page-size current-time where-query)
                        spicy-records (doall (map map-fn records))]
                      (try (doall (map db/persist-record! spicy-records))
-                          (Thread/sleep (int (rand 5000)))
+                          (Thread/sleep (int (rand delay)))
                           (catch Exception e
                               (clojure.stacktrace/print-stack-trace e)
                               (timbre/error (str e))))
@@ -147,7 +148,8 @@
         map-and-rate-spicy-comment
         :spicy-comment/updated-at
         (Instant/now)
-        (helpers/where [:>= :total-rating minimum-highly-rated-threshold])))
+        (helpers/where [:>= :total-rating minimum-highly-rated-threshold])
+        (* 30 1000)))
 
 (def spicy-comments-xf
     (comp
