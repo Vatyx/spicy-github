@@ -54,7 +54,9 @@
 (def issue-model
     [:map
      {:has-one    {:issue/spicy-issue {:model :spicy-issue :foreign-key :spicy-issue/id}}
-      :has-many   {:issue/comments {:model :comment :foreign-key :comment/issue-id}}
+      :has-many   {:issue/comments              {:model :comment :foreign-key :comment/issue-id}
+                   :issue/spicy-comments        {:model :spicy-comment :foreign-key :spicy-comment/issue-id}
+                   :issue/highly-rated-comments {:model :highly-rated-comment :foreign-key :highly-rated-comment/issue-id}}
       :belongs-to {:issue/user       {:model :user :foreign-key :issue/user-id}
                    :issue/repository {:model :repository :foreign-key :issue/repository-id}}}
      [:issue/id {:primary-key true} string?]
@@ -87,21 +89,25 @@
 
 (def spicy-comment-model
     [:map
-     {:belongs-to {:spicy-comment/comment {:model :comment :foreign-key :spicy-comment/id}}}
+     {:belongs-to {:spicy-comment/comment {:model :comment :foreign-key :spicy-comment/id}
+                   :spicy-comment/issue   {:model :issue :foreign-key :spicy-comment/issue-id}}}
      [:spicy-comment/id {:primary-key true} string?]
      [:spicy-comment/total-rating float?]
      [:spicy-comment/controversial-rating float?]
      [:spicy-comment/funny-rating float?]
      [:spicy-comment/agreeable-rating float?]
+     [:spicy-comment/issue-id {:optional true} string?]
      [:spicy-comment/created-at {:auto true} inst?]
      [:spicy-comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
 (def highly-rated-comment-model
     [:map
-     {:belongs-to {:highly-rated-comment/comment {:model :comment :foreign-key :highly-rated-comment/id}}}
+     {:belongs-to {:highly-rated-comment/comment {:model :comment :foreign-key :highly-rated-comment/id}
+                   :highly-rated-comment/issue   {:model :issue :foreign-key :highly-rated-comment/issue-id}}}
      [:highly-rated-comment/id {:primary-key true} string?]
      [:highly-rated-comment/total-rating float?]
      [:highly-rated-comment/created-at {:auto true} inst?]
+     [:highly-rated-comment/issue-id {:optional true} string?]
      [:highly-rated-comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
 (defn register-models! []

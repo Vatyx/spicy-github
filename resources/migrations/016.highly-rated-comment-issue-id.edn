@@ -1,0 +1,8 @@
+{:up
+ [[:table/alter {:table :highly-rated-comment}
+   [:column/add
+    [:issue-id {:foreign-key true :references :issue/id :optional true} :string]]]]
+ :down
+ [[:table/alter {:table :highly-rated-comment}
+   [:column/drop
+    [:issue-id]]]]}

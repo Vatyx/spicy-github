@@ -139,7 +139,7 @@
      (transaction/execute!
          (fn []
              (doall (map query-relations!
-                         (-> (merge {:select [:*] :limit n :tablesample "system(0.01)"} query-map)
+                         (-> (merge {:select [:*] :limit n :tablesample "system(5)"} query-map)
                              (q/all! table))))))))
 
 (defn get-n-latest-before!
@@ -188,9 +188,6 @@
 
 (defn query-spicy-comment-relations! [spicy-comment]
     (q/load! spicy-comment :spicy-comment/comment))
-
-(defn query-highly-rated-comment-relations! [highly-rated-comment]
-    (q/load! highly-rated-comment :highly-rated-comment/comment))
 
 (defn query-spicy-issue-relations! [spicy-issue]
     (q/load! spicy-issue :spicy-issue/issue))
@@ -247,11 +244,9 @@
 
 (defn get-n-random-issues-from-highly-rated-comments!
     ([n] (map query-issue-relations!
-                        (map (fn [issue-id] (get-by-id! :issue issue-id))
-                             (map (fn [comment] (:comment/issue-id comment))
-                                  (map (fn [highly-rated-comment]
-                                           (get-by-id! :comment (:highly-rated-comment/id highly-rated-comment)))
-                                       (get-n-random! :highly-rated-comment query-highly-rated-comment-relations! {} n)))))))
+              (map (fn [highly-rated-comment]
+                       (get-by-id! :issue (:highly-rated-comment/issue-id highly-rated-comment)))
+                   (get-n-random! :highly-rated-comment (fn [_] _) {} n)))))
 
 (defn accumulate-until-at-least [retrieval-fn n]
     (loop [result []]
