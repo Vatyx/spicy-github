@@ -115,13 +115,15 @@
 
 (def visible-comments (atom {}))
 (def collapsed-comments (atom {}))
+(def collapsed-comments-parents-by-id (atom {}))
 (def refresh-issues-fn (atom nil))
 
 (defn- swap-is-selected [comment-id]
     (let [existing-value (get @visible-comments comment-id false)]
-        (reset! visible-comments (merge @visible-comments {comment-id (not existing-value)}))
-        (let [comments (get @collapsed-comments comment-id [])]
-            (doall (fn [comment] (swap-is-selected (:comment/id comment))) comments))
+        (swap! visible-comments conj {comment-id (not existing-value)})
+        (when (contains? @collapsed-comments-parents-by-id comment-id)
+            (let [comments (get @collapsed-comments comment-id [])]
+                (run! (fn [comment] (swap! visible-comments conj {(:comment/id comment) (not (get @visible-comments (:comment/id comment) false))})) comments)))
         (when (not (nil? @refresh-issues-fn))
             (@refresh-issues-fn))))
 
@@ -132,13 +134,14 @@
        [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
 
 (defn- get-comment-html [comment comment-id]
-    [:div (stylefy/use-style (merge comment-style {:cursor :pointer}) {:id comment-id :on-click #(swap-is-selected comment-id)}) (-> comment :comment/user get-user-html)
+    ; We want to toggle the parent's collapse function
+    [:div (stylefy/use-style (merge comment-style {:cursor :pointer}) {:on-click #(swap-is-selected (get @collapsed-comments-parents-by-id comment-id comment-id))}) (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
       [:div (stylefy/use-style comment-body-style)
        [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
 
 (defn- get-hidden-comment-html [comment-id]
-    [:div (stylefy/use-style hidden-style {:id comment-id :on-click #(swap-is-selected comment-id)})])
+    [:div (stylefy/use-style hidden-style {:on-click #(swap-is-selected comment-id)})])
 
 (defn- is-spicy? [comment]
     (>= (get comment :comment/spicy-rating 0) 3.5))
@@ -167,24 +170,22 @@
                         (recur (conj chain matching))))))))
 
 (defn- collapse-boring-comments [comments]
-    (when (any? comments)
+    (when (> (count comments) 0)
         (let [first-comment (first comments)
-              comment-id (:comment/id (first comments))]
-            (swap! collapsed-comments (conj @collapsed-comments {comment-id (vec comments)}))
+              comment-id (:comment/id first-comment)]
+            (swap! collapsed-comments conj {comment-id (vec comments)})
+            (run! (fn [comment] (swap! collapsed-comments-parents-by-id conj (:comment/id comment) comment-id)) comments)
             (if (get @visible-comments comment-id false)
-                (repeat 3 first-comment)
-                comments))))
+                comments
+                (repeat (min 3 (count comments)) first-comment)))))
 
 (defn- collapse-comments [comments]
-    (let [to-render (take-while (fn [comment] (is-spicy? comment) comments))
-          boring-comments (take-while (fn [comment] (not (is-spicy? comment))) (drop (count to-render) comments))]
-        (if-let [comment-count (+ (count boring-comments) (count to-render))
-                 (< comment-count (count comments))]
-            (concat to-render (collapse-boring-comments boring-comments) collapse-comments)
+    (let [to-render (take-while (fn [comment] (is-spicy? comment)) comments)
+          boring-comments (take-while (fn [comment] (not (is-spicy? comment))) (drop (count to-render) comments))
+          comment-count (+ (count boring-comments) (count to-render))]
+        (if (< comment-count (count comments))
+            (concat to-render (collapse-boring-comments boring-comments) (collapse-comments (drop comment-count comments)))
             (concat to-render (collapse-boring-comments boring-comments)))))
-
-(defn- map-comments [comments]
-    (map get-spicy-comment-html comments))
 
 (defn- get-issue-html [issue]
     [:div (if (empty? (:issue/comments issue))
@@ -196,7 +197,7 @@
       [:summary [:div (stylefy/use-style issue-container-style)
                  [:div (stylefy/use-style md-block-wrapper) [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]]
                  (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
-      (vec (conj (->> (:issue/comments issue) get-ordered-comments collapse-comments (map get-spicy-comment-html)) :div))]])
+      (vec (conj (map get-spicy-comment-html (collapse-comments (get-ordered-comments (:issue/comments issue)))) :div))]])
 
 (defn- get-issues-html [issues]
     [:div (vec (conj (map get-issue-html issues) :div))])
