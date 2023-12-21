@@ -122,7 +122,7 @@
     (let [existing-value (get @visible-comments comment-id false)]
         (swap! visible-comments conj {comment-id (not existing-value)})
         (when (contains? @collapsed-comments-parents-by-id comment-id)
-            (let [comments (get @collapsed-comments comment-id [])]
+            (let [comments (get @collapsed-comments comment-id '())]
                 (run! (fn [comment] (swap! visible-comments conj {(:comment/id comment) (not (get @visible-comments (:comment/id comment) false))})) comments)))
         (when (not (nil? @refresh-issues-fn))
             (@refresh-issues-fn))))
@@ -173,8 +173,8 @@
     (when (> (count comments) 0)
         (let [first-comment (first comments)
               comment-id (:comment/id first-comment)]
-            (swap! collapsed-comments conj {comment-id (vec comments)})
-            (run! (fn [comment] (swap! collapsed-comments-parents-by-id conj (:comment/id comment) comment-id)) comments)
+            (swap! collapsed-comments conj {comment-id (remove (fn [comment] (= comment first-comment)) comments)})
+            (run! (fn [comment] (swap! collapsed-comments-parents-by-id conj {(:comment/id comment) comment-id})) comments)
             (if (get @visible-comments comment-id false)
                 comments
                 (repeat (min 3 (count comments)) first-comment)))))
@@ -255,7 +255,7 @@
                            (concat @issues (filter (fn [issue]
                                                        (let [issue-id (:issue/id issue)
                                                              new-issue (not (or (contains? existing-ids issue-id) (contains? @new-ids issue-id)))]
-                                                           (reset! new-ids (conj @new-ids issue-id))
+                                                           (swap! new-ids conj issue-id)
                                                            new-issue)) new-issues)))))
     (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn))
     (when (not (has-enough-issues)) (@issue-initialization)))
