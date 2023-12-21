@@ -61,7 +61,8 @@
                    :margin-top       :5px
                    :margin-bottom    :5px
                    :background-color :#fff
-                   :border-radius    :50%})
+                   :border-radius    :50%
+                   :cursor           :pointer})
 
 (def md-block-wrapper {:max-width  :900px
                        :max-height :1600px
@@ -112,13 +113,17 @@
     ([user style]
      [:img (merge (stylefy/use-style style) {:src (:user/avatar-url user)})]))
 
-(def spicy-comments (atom {}))
-
+(def visible-comments (atom {}))
+(def collapsed-comments (atom {}))
+(def collapsed-comments-parents-by-id (atom {}))
 (def refresh-issues-fn (atom nil))
 
 (defn- swap-is-selected [comment-id]
-    (let [existing-value (get @spicy-comments comment-id false)]
-        (reset! spicy-comments (merge @spicy-comments {comment-id (not existing-value)}))
+    (let [existing-value (get @visible-comments comment-id false)]
+        (swap! visible-comments conj {comment-id (not existing-value)})
+        (when (contains? @collapsed-comments-parents-by-id comment-id)
+            (let [comments (get @collapsed-comments comment-id '())]
+                (run! (fn [comment] (swap! visible-comments conj {(:comment/id comment) (not (get @visible-comments (:comment/id comment) false))})) comments)))
         (when (not (nil? @refresh-issues-fn))
             (@refresh-issues-fn))))
 
@@ -129,19 +134,26 @@
        [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
 
 (defn- get-comment-html [comment comment-id]
-    [:div (stylefy/use-style comment-style {:id comment-id :on-click #(swap-is-selected comment-id)}) (-> comment :comment/user get-user-html)
+    ; We want to toggle the parent's collapse function
+    [:div (stylefy/use-style (merge comment-style {:cursor :pointer}) {:on-click #(swap-is-selected (get @collapsed-comments-parents-by-id comment-id comment-id))}) (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
       [:div (stylefy/use-style comment-body-style)
        [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
 
+(defn- get-hidden-comment-html [comment-id]
+    [:div (stylefy/use-style hidden-style {:on-click #(swap-is-selected comment-id)})])
+
+(defn- is-spicy? [comment]
+    (>= (get comment :comment/spicy-rating 0) 3.5))
+
 (defn- get-spicy-comment-html [comment]
-    (let [is-spicy (>= (get comment :comment/spicy-rating 0) 3.5)
+    (let [is-spicy (is-spicy? comment)
           comment-id (:comment/id comment)]
         (if is-spicy
             (get-static-comment-html comment)
-            (if (get @spicy-comments comment-id false)
+            (if (get @visible-comments comment-id false)
                 (get-comment-html comment comment-id)
-                [:div (stylefy/use-style hidden-style {:id comment-id :on-click #(swap-is-selected comment-id)})]))))
+                (get-hidden-comment-html comment-id)))))
 
 (defn- get-ordered-comments [comments]
     (let [root-comment (last (filter (fn [comment] (-> comment :comment/parent-comment nil?)) comments))
@@ -157,6 +169,24 @@
                         chain
                         (recur (conj chain matching))))))))
 
+(defn- collapse-boring-comments [comments]
+    (when (> (count comments) 0)
+        (let [first-comment (first comments)
+              comment-id (:comment/id first-comment)]
+            (swap! collapsed-comments conj {comment-id (remove (fn [comment] (= comment first-comment)) comments)})
+            (run! (fn [comment] (swap! collapsed-comments-parents-by-id conj {(:comment/id comment) comment-id})) comments)
+            (if (get @visible-comments comment-id false)
+                comments
+                (repeat (min 3 (count comments)) first-comment)))))
+
+(defn- collapse-comments [comments]
+    (let [to-render (take-while (fn [comment] (is-spicy? comment)) comments)
+          boring-comments (take-while (fn [comment] (not (is-spicy? comment))) (drop (count to-render) comments))
+          comment-count (+ (count boring-comments) (count to-render))]
+        (if (< comment-count (count comments))
+            (concat to-render (collapse-boring-comments boring-comments) (collapse-comments (drop comment-count comments)))
+            (concat to-render (collapse-boring-comments boring-comments)))))
+
 (defn- get-issue-html [issue]
     [:div (if (empty? (:issue/comments issue))
               (stylefy/use-style issue-without-comments-style)
@@ -167,7 +197,7 @@
       [:summary [:div (stylefy/use-style issue-container-style)
                  [:div (stylefy/use-style md-block-wrapper) [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]]
                  (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
-      (vec (conj (->> (:issue/comments issue) get-ordered-comments (map get-spicy-comment-html)) :div))]])
+      (vec (conj (map get-spicy-comment-html (collapse-comments (get-ordered-comments (:issue/comments issue)))) :div))]])
 
 (defn- get-issues-html [issues]
     [:div (vec (conj (map get-issue-html issues) :div))])
@@ -212,7 +242,6 @@
 
 (def is-loading-issues (atom false))
 
-
 (def issue-initialization (atom nil))
 
 (defn- has-enough-issues []
@@ -226,7 +255,7 @@
                            (concat @issues (filter (fn [issue]
                                                        (let [issue-id (:issue/id issue)
                                                              new-issue (not (or (contains? existing-ids issue-id) (contains? @new-ids issue-id)))]
-                                                           (reset! new-ids (conj @new-ids issue-id))
+                                                           (swap! new-ids conj issue-id)
                                                            new-issue)) new-issues)))))
     (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn))
     (when (not (has-enough-issues)) (@issue-initialization)))
@@ -306,4 +335,4 @@
 ; Maybe we got an error on first load, try again until we don't have errors
 (js/setInterval
     try-initialize-issues!
-    10000)
+    15000)
