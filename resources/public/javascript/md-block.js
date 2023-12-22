@@ -68,7 +68,6 @@ export class MarkdownElement extends HTMLElement {
 		if (this._mdContent === undefined) {
 			this._contentFromHTML = true;
 			this._mdContent = blockQuoteSanitize(deIndent(this.innerHTML));
-			console.log(this._mdContent);
 		}
 
 		this.render();
