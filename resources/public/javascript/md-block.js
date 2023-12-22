@@ -22,12 +22,13 @@ function deIndent(text) {
 		text = text.replace(RegExp("^" + indent, "gm"), "");
 	}
 
-	return text;
+	return text.replace(/^[\r\n]*([\t ]+)/g, "");
 }
 
 // Per https://github.com/markedjs/marked/issues/874#issuecomment-339995375
 function blockQuoteSanitize(text) {
-	return text.replace(/&gt;+/g, '> ');
+	text = text.replace(/&gt;+/g, '> ');
+	return text.replace(/&lt;+/g, '<');
 }
 
 export class MarkdownElement extends HTMLElement {
@@ -67,6 +68,7 @@ export class MarkdownElement extends HTMLElement {
 		if (this._mdContent === undefined) {
 			this._contentFromHTML = true;
 			this._mdContent = blockQuoteSanitize(deIndent(this.innerHTML));
+			console.log(this._mdContent);
 		}
 
 		this.render();
@@ -85,23 +87,12 @@ export class MarkdownElement extends HTMLElement {
 
 		marked.setOptions({
 			gfm: true,
-			smartypants: true,
-			langPrefix: "language-",
+			breaks: true
 		});
 
 		marked.use({renderer: this.renderer});
 
 		let html = this._parse();
-
-		if (this.untrusted) {
-			let mdContent = this._mdContent;
-			html = await MarkdownElement.sanitize(html);
-			if (this._mdContent !== mdContent) {
-				// While we were running this async call, the content changed
-				// We don’t want to overwrite with old data. Abort mission!
-				return;
-			}
-		}
 
 		this.innerHTML = html;
 
