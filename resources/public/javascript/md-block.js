@@ -22,7 +22,7 @@ function deIndent(text) {
 		text = text.replace(RegExp("^" + indent, "gm"), "");
 	}
 
-	return text.replace(/^[\r\n]*([\t ]+)/g, "");
+	return text;
 }
 
 // Per https://github.com/markedjs/marked/issues/874#issuecomment-339995375
