@@ -184,7 +184,7 @@
                              (q/all! table))))))))
 
 (defn query-comment-relations! [comment]
-    (q/load! comment :comment/user :comment/spicy-comment))
+    (q/load! comment :comment/user))
 
 (defn query-spicy-comment-relations! [spicy-comment]
     (q/load! spicy-comment :spicy-comment/comment))
@@ -193,7 +193,7 @@
     (q/load! spicy-issue :spicy-issue/issue))
 
 (defn query-issue-relations! [issue]
-    (let [mapped-issue (q/load! issue :issue/user :issue/comments :issue/spicy-issue)]
+    (let [mapped-issue (q/load! issue :issue/user :issue/comments :issue/spicy-issue :issue/spicy-comments)]
         (assoc mapped-issue :issue/comments (map query-comment-relations! (:issue/comments mapped-issue)))))
 
 (defn map-spicy-issue-to-issue [spicy-issue]
