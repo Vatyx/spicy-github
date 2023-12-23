@@ -1,0 +1,8 @@
+{:up
+ [[:table/create {:table :checkpoint}
+   [:column/add
+    [:id {:primary-key true} :string]
+    [:json-payload {:optional true} :string]
+    [:gungnir/timestamps]]]]
+ :down
+ [[:table/drop :checkpoint]]}
