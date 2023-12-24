@@ -4,6 +4,7 @@
               [honey.sql.helpers :as helpers]
               [spicy-github.util :refer :all]
               [clojure.stacktrace]
+              [cheshire.core :refer :all]
               [gungnir.transaction :as transaction]
               [spicy-github.model :as model]                ; this must be here so our models get initialized
               [spicy-github.db :as db]
@@ -95,12 +96,12 @@
      :highly-rated-comment/issue-id     (-> spicy-comment :spicy-comment/comment :comment/issue-id)})
 
 (defn- forever-run!
-    ([get-fn! map-fn update-at-fn]
-     (forever-run! get-fn! map-fn update-at-fn (Instant/now)))
-    ([get-fn! map-fn update-at-fn last-processed-input]
+    ([get-fn! map-fn update-at-fn checkpoint-id last-processed-input]
      (let [last-processed (atom last-processed-input)]
          (try
              (loop [current-time @last-processed]
+                 (db/persist-record! (spicy-github.adapters/checkpoint-create checkpoint-id current-time))
+                 (timbre/debug "Updating checkpoint" checkpoint-id "to" current-time)
                  (reset! last-processed current-time)
                  (let [records (get-fn! db-page-size current-time)
                        spicy-records (doall (map map-fn records))]
@@ -111,14 +112,15 @@
                               (timbre/error (str e))))
                      (if (< (count records) db-page-size)
                          (recur (Instant/now))
-                         (recur (update-at-fn (last records))))))
+                         (recur (update-at-fn (first (sort-by update-at-fn records)))))))
              (catch Exception e
                  (timbre/error (str e))
-                 (forever-run! get-fn! map-fn update-at-fn @last-processed)))))
-    ([get-fn! map-fn update-at-fn last-processed-input where-query delay]
+                 (forever-run! get-fn! map-fn update-at-fn checkpoint-id @last-processed)))))
+    ([get-fn! map-fn update-at-fn checkpoint-id last-processed-input where-query delay]
      (let [last-processed (atom last-processed-input)]
          (try
              (loop [current-time @last-processed]
+                 (db/persist-record! (spicy-github.adapters/checkpoint-create checkpoint-id current-time))
                  (reset! last-processed current-time)
                  (let [records (get-fn! db-page-size current-time where-query)
                        spicy-records (doall (map map-fn records))]
@@ -129,53 +131,51 @@
                               (timbre/error (str e))))
                      (if (< (count records) db-page-size)
                          (recur (Instant/now))
-                         (recur (update-at-fn (last records))))))
+                         (recur (update-at-fn (first (sort-by update-at-fn records)))))))
              (catch Exception e
                  (timbre/error (str e))
-                 (forever-run! get-fn! map-fn update-at-fn @last-processed))))))
+                 (forever-run! get-fn! map-fn update-at-fn checkpoint-id @last-processed where-query delay))))))
 
 (defn forever-rate-issues! []
-    (forever-run! db/get-n-latest-issues-before! map-and-rate-issue :issue/updated-at))
+    (let [checkpoint-id "forever-rate-issues!"
+          checkpoint (db/get-by-id! :checkpoint checkpoint-id)
+          checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
+        (forever-run! db/get-n-latest-issues-before! map-and-rate-issue :issue/updated-at checkpoint-id checkpoint-time)))
 
 (def minimum-highly-rated-threshold (float 3.5))
 
 (defn forever-rate-comments! []
-    (forever-run! db/get-n-latest-comments-before! map-and-rate-comment :comment/updated-at))
+    (let [checkpoint-id "forever-rate-comments!"
+          checkpoint (db/get-by-id! :checkpoint checkpoint-id)
+          checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
+        (forever-run! db/get-n-latest-comments-before! map-and-rate-comment :comment/updated-at checkpoint-id checkpoint-time)))
 
 (defn forever-migrate-highly-rated-comments! []
-    (forever-run!
-        db/get-n-latest-spicy-comments-before!
-        map-and-rate-spicy-comment
-        :spicy-comment/updated-at
-        (Instant/now)
-        (helpers/where [:>= :total-rating minimum-highly-rated-threshold])
-        (* 30 1000)))
+    (let [checkpoint-id "forever-migrate-highly-rated-comments!"
+          checkpoint (db/get-by-id! :checkpoint checkpoint-id)
+          checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
+        (forever-run!
+            db/get-n-latest-spicy-comments-before!
+            map-and-rate-spicy-comment
+            :spicy-comment/updated-at
+            checkpoint-id
+            checkpoint-time
+            (helpers/where [:>= :total-rating minimum-highly-rated-threshold])
+            (* 30 1000))))
 
 (def spicy-comments-xf
     (comp
         (map map-and-rate-comment)
         (execute #(db/persist-record! %))))
 
-(defn rate-all-comments []
-    (let [now (Instant/now)]
-        (loop [comments (db/get-n-oldest-comments-before! 100 now)]
+(defn rate-all-comments! []
+    (let [checkpoint-id "rate-all-comments!"
+          checkpoint (db/get-by-id! :checkpoint checkpoint-id)
+          checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
+        (loop [comments (db/get-n-oldest-comments-before! 100 checkpoint-time)]
             (if (empty? comments)
                 nil
                 (let [spicy-comments (doall (map map-and-rate-comment comments))]
+                    (db/persist-record! (spicy-github.adapters/checkpoint-create checkpoint-id checkpoint-time))
                     (doall (map db/persist-record-exception-safe! spicy-comments))
-                    (recur (db/get-n-oldest-comments-before! 100 now)))))))
-(comment
-
-    (rate-all-comments)
-
-
-
-    (def nowish (Instant/now))
-
-    (def comments (db/get-n-oldest-comments-before! 10000 (Instant/now)))
-
-    (execute-pipeline spicy-comments-xf comments)
-
-    (db/persist-record! (first (into [] spicy-comments-xf comments)))
-
-    )
+                    (recur (db/get-n-oldest-comments-before! 100 (:comment/updated-at (first (sort-by :comment/updated-at comments))))))))))

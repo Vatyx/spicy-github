@@ -110,6 +110,13 @@
      [:highly-rated-comment/issue-id {:optional true} string?]
      [:highly-rated-comment/updated-at {:before-save [:get-current-time] :optional true} inst?]])
 
+(def checkpoint
+    [:map
+     [:checkpoint/id {:primary-key true} string?]
+     [:checkpoint/json-payload {:optional true} string?]
+     [:checkpoint/created-at {:auto true} inst?]
+     [:checkpoint/updated-at {:before-save [:get-current-time] :optional true} inst?]])
+
 (defn register-models! []
     (gungnir.model/register! {:repository           repository-model
                               :issue                issue-model
@@ -117,6 +124,7 @@
                               :comment              comment-model
                               :spicy-comment        spicy-comment-model
                               :spicy-issue          spicy-issue-model
-                              :highly-rated-comment highly-rated-comment-model}))
+                              :highly-rated-comment highly-rated-comment-model
+                              :checkpoint           checkpoint}))
 
 (register-models!)

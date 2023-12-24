@@ -25,12 +25,6 @@ function deIndent(text) {
 	return text;
 }
 
-// Per https://github.com/markedjs/marked/issues/874#issuecomment-339995375
-function blockQuoteSanitize(text) {
-	text = text.replace(/&gt;+/g, '> ');
-	return text.replace(/&lt;+/g, '<');
-}
-
 export class MarkdownElement extends HTMLElement {
 	constructor() {
 		super();
@@ -67,7 +61,7 @@ export class MarkdownElement extends HTMLElement {
 
 		if (this._mdContent === undefined) {
 			this._contentFromHTML = true;
-			this._mdContent = blockQuoteSanitize(deIndent(this.innerHTML));
+			this._mdContent = deIndent(this.innerHTML).replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 		}
 
 		this.render();

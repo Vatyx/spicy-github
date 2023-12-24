@@ -3,7 +3,8 @@
     (:require [cheshire.core :refer :all]
               [honey.sql.helpers :as h]
               [spicy-github.util :refer :all]
-              [gungnir.query :as q]))
+              [gungnir.query :as q])
+    (:import (java.time Instant)))
 
 (defn get-issue-id-for-issue-url [issue-url]
     (-> (h/where [:= :issue/url issue-url])
@@ -120,6 +121,14 @@
                                  0
                                  (-> issue :issue/spicy-issue :spicy-issue/total-rating))
          :issue/reaction     (parse-json (:issue/reaction-json issue))}))
+
+(defn checkpoint-create [checkpoint-id current-time]
+    {:checkpoint/id checkpoint-id :checkpoint/json-payload (generate-string {:time current-time}) :checkpoint/updated-at (Instant/now)})
+
+(defn checkpoint-get-time
+    ([checkpoint] (checkpoint-get-time checkpoint (Instant/now)))
+    ([checkpoint default]
+     (get :time (parse-json (get :checkpoint/json-payload checkpoint)) default)))
 
 (comment
 
