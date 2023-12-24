@@ -16,17 +16,19 @@
 (defn should-remap-db [] (parse-boolean (load-env :remap-db "REMAP_DB" :REMAP_DB "false")))
 
 (defn- remap! [db-query! parse-fn json-payload-keyword updated-at-keyword table-name]
-    (let [checkpoint-id (str "remap!" table-name)
+    (let [record-count 1000
+          checkpoint-id (str "remap-" table-name "!")
           checkpoint (db/get-by-id! :checkpoint checkpoint-id)
           checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
-        (loop [start-time checkpoint-time]
-            (let [issue-batch (db-query! start-time)]
+        (loop [current-time checkpoint-time]
+            (let [issue-batch (db-query! record-count current-time)]
+                (db/persist-record! (spicy-github.adapters/checkpoint-create checkpoint-id current-time))
                 (run!
                     #(db/persist-record! (parse-fn (parse-json (json-payload-keyword %))))
                     issue-batch)
-                (timbre/debug (str "Processed " table-name " at " start-time))
-                (db/persist-record! (spicy-github.adapters/checkpoint-create checkpoint-id checkpoint-time))
-                (if (== db/default-page-size (count issue-batch))
+                (timbre/debug (str "Processed " table-name " at " current-time))
+                (Thread/sleep (int (rand 5000)))
+                (if (<= record-count (count issue-batch))
                     (recur (updated-at-keyword (first (sort-by updated-at-keyword issue-batch))))
                     (timbre/info (str "Successfully remapped " table-name)))))))
 
@@ -38,5 +40,5 @@
 
 (defn remap-db! []
     (timbre/info "Remapping database...")
-    (remap-issues!)
-    (remap-comments!))
+    (remap-comments!)
+    (remap-issues!))

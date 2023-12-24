@@ -126,9 +126,10 @@
     {:checkpoint/id checkpoint-id :checkpoint/json-payload (generate-string {:time current-time}) :checkpoint/updated-at (Instant/now)})
 
 (defn checkpoint-get-time
-    ([checkpoint] (checkpoint-get-time checkpoint (Instant/now)))
+    ([checkpoint]
+     (checkpoint-get-time checkpoint (Instant/now)))
     ([checkpoint default]
-     (get :time (parse-json (get :checkpoint/json-payload checkpoint)) default)))
+     (get (parse-json (get :checkpoint/json-payload checkpoint)) :time default)))
 
 (comment
 
