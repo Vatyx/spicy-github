@@ -129,6 +129,8 @@
 
 (defn get-by-id! [table id] (q/find! table id))
 
+(defn delete! [record] (q/delete! record))
+
 (defn get-n-latest!
     ([table query-relations!] (get-n-latest! table query-relations! default-page-size))
     ([table query-relations! n]
