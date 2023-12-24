@@ -19,7 +19,7 @@
 (def emoji-config (load-emoji-config!))
 (def max-score (float 33))
 (def comment-offset (/ 50 33))
-(def db-page-size 250)
+(def db-page-size 300)
 
 (defn- rate-emojis [reactions-payload]
     (min max-score
@@ -105,14 +105,15 @@
                  (reset! last-processed current-time)
                  (let [records (get-fn! db-page-size current-time)
                        spicy-records (doall (map map-fn records))]
-                     (try (doall (map db/persist-record! spicy-records))
-                          (Thread/sleep (int (rand 5000)))
-                          (catch Exception e
-                              (clojure.stacktrace/print-stack-trace e)
-                              (timbre/error (str e))))
-                     (if (< (count records) db-page-size)
-                         (recur (Instant/now))
-                         (recur (update-at-fn (first (sort-by update-at-fn records)))))))
+                     (try
+                         (run! db/persist-record! spicy-records)
+                         (Thread/sleep (int (rand 5000)))
+                         (catch Exception e
+                             (clojure.stacktrace/print-stack-trace e)
+                             (timbre/error (str e))))
+                     (if (>= (count records) db-page-size)
+                         (recur (update-at-fn (first (sort-by update-at-fn records))))
+                         (recur (Instant/now)))))
              (catch Exception e
                  (timbre/error (str e))
                  (forever-run! get-fn! map-fn update-at-fn checkpoint-id @last-processed)))))
@@ -129,9 +130,9 @@
                           (catch Exception e
                               (clojure.stacktrace/print-stack-trace e)
                               (timbre/error (str e))))
-                     (if (< (count records) db-page-size)
-                         (recur (Instant/now))
-                         (recur (update-at-fn (first (sort-by update-at-fn records)))))))
+                     (if (>= (count records) db-page-size)
+                         (recur (update-at-fn (first (sort-by update-at-fn records))))
+                         (recur (Instant/now)))))
              (catch Exception e
                  (timbre/error (str e))
                  (forever-run! get-fn! map-fn update-at-fn checkpoint-id @last-processed where-query delay))))))
