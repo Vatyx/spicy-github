@@ -12,10 +12,18 @@
               [honey.sql :as sql]
               [honey.sql.helpers :as helpers]
               [clojure.stacktrace]
+              [cheshire.core :refer :all]
               [next.jdbc :as jdbc]
         ; this must be here so our models get initialized
               [spicy-github.model :as model]
-              [spicy-github.util :refer :all]))
+              [spicy-github.util :refer :all])
+    (:import (java.time Instant)))
+
+; https://stackoverflow.com/a/46859915/1917135
+(extend-protocol cheshire.generate/JSONable
+    Instant
+    (to-json [dt gen]
+        (cheshire.generate/write-string gen (str dt))))
 
 (defn- db-server-name [] (load-env :rds-hostname "RDS_HOSTNAME" :RDS_HOSTNAME))
 (defn- db-port [] (Integer/parseInt (load-env :rds-port "RDS_PORT" :RDS_PORT)))
@@ -253,4 +261,3 @@
         (if (>= (count result) n)
             result
             (recur (concat result (retrieval-fn))))))
-

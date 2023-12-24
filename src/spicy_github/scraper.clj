@@ -231,7 +231,7 @@
         (if (nil? latest-repository)
             (do
                 (timbre/debug "No new repositories to process, waiting...")
-                (Thread/sleep (int (rand 5000))))
+                (Thread/sleep (int (rand (* 30 1000)))))
             (do
                 (process-repositories [latest-repository])
                 (mark-repository-as-processed! latest-repository)))

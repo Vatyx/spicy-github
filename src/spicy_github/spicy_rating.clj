@@ -100,7 +100,8 @@
      (let [last-processed (atom last-processed-input)]
          (try
              (loop [current-time @last-processed]
-                 (db/persist-record! {:checkpoint/id checkpoint-id :checkpoint/json-payload (generate-string {:time current-time})})
+                 (db/persist-record! (spicy-github.adapters/checkpoint-create checkpoint-id current-time))
+                 (timbre/debug "Updating checkpoint" checkpoint-id "to" current-time)
                  (reset! last-processed current-time)
                  (let [records (get-fn! db-page-size current-time)
                        spicy-records (doall (map map-fn records))]
@@ -111,7 +112,7 @@
                               (timbre/error (str e))))
                      (if (< (count records) db-page-size)
                          (recur (Instant/now))
-                         (recur (update-at-fn (last records))))))
+                         (recur (update-at-fn (first (sort-by update-at-fn records)))))))
              (catch Exception e
                  (timbre/error (str e))
                  (forever-run! get-fn! map-fn update-at-fn checkpoint-id @last-processed)))))
@@ -119,7 +120,7 @@
      (let [last-processed (atom last-processed-input)]
          (try
              (loop [current-time @last-processed]
-                 (db/persist-record! {:checkpoint/id checkpoint-id :checkpoint/json-payload (generate-string {:time current-time})})
+                 (db/persist-record! (spicy-github.adapters/checkpoint-create checkpoint-id current-time))
                  (reset! last-processed current-time)
                  (let [records (get-fn! db-page-size current-time where-query)
                        spicy-records (doall (map map-fn records))]
@@ -130,7 +131,7 @@
                               (timbre/error (str e))))
                      (if (< (count records) db-page-size)
                          (recur (Instant/now))
-                         (recur (update-at-fn (last records))))))
+                         (recur (update-at-fn (first (sort-by update-at-fn records)))))))
              (catch Exception e
                  (timbre/error (str e))
                  (forever-run! get-fn! map-fn update-at-fn checkpoint-id @last-processed where-query delay))))))
@@ -138,26 +139,26 @@
 (defn forever-rate-issues! []
     (let [checkpoint-id "forever-rate-issues!"
           checkpoint (db/get-by-id! :checkpoint checkpoint-id)
-          checkpoint-time (get :time (parse-json (get :checkpoint/json-payload checkpoint)) (Instant/now))]
-        (forever-run! db/get-n-latest-issues-before! map-and-rate-issue checkpoint-id :issue/updated-at checkpoint-time)))
+          checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
+        (forever-run! db/get-n-latest-issues-before! map-and-rate-issue :issue/updated-at checkpoint-id checkpoint-time)))
 
 (def minimum-highly-rated-threshold (float 3.5))
 
 (defn forever-rate-comments! []
     (let [checkpoint-id "forever-rate-comments!"
           checkpoint (db/get-by-id! :checkpoint checkpoint-id)
-          checkpoint-time (get :time (parse-json (get :checkpoint/json-payload checkpoint)) (Instant/now))]
-        (forever-run! db/get-n-latest-comments-before! map-and-rate-comment checkpoint-id :comment/updated-at checkpoint-time)))
+          checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
+        (forever-run! db/get-n-latest-comments-before! map-and-rate-comment :comment/updated-at checkpoint-id checkpoint-time)))
 
 (defn forever-migrate-highly-rated-comments! []
     (let [checkpoint-id "forever-migrate-highly-rated-comments!"
           checkpoint (db/get-by-id! :checkpoint checkpoint-id)
-          checkpoint-time (get :time (parse-json (get :checkpoint/json-payload checkpoint)) (Instant/now))]
+          checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
         (forever-run!
             db/get-n-latest-spicy-comments-before!
             map-and-rate-spicy-comment
-            forever-migrate-highly-rated-comments!
             :spicy-comment/updated-at
+            checkpoint-id
             checkpoint-time
             (helpers/where [:>= :total-rating minimum-highly-rated-threshold])
             (* 30 1000))))
@@ -170,11 +171,11 @@
 (defn rate-all-comments! []
     (let [checkpoint-id "rate-all-comments!"
           checkpoint (db/get-by-id! :checkpoint checkpoint-id)
-          checkpoint-time (get :time (parse-json (get :checkpoint/json-payload checkpoint)) (Instant/now))]
+          checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
         (loop [comments (db/get-n-oldest-comments-before! 100 checkpoint-time)]
             (if (empty? comments)
                 nil
                 (let [spicy-comments (doall (map map-and-rate-comment comments))]
-                    (db/persist-record! {:checkpoint/id checkpoint-id :checkpoint/json-payload (generate-string {:time checkpoint-time})})
+                    (db/persist-record! (spicy-github.adapters/checkpoint-create checkpoint-id checkpoint-time))
                     (doall (map db/persist-record-exception-safe! spicy-comments))
-                    (recur (db/get-n-oldest-comments-before! 100 (:comment/updated-at (last comments)))))))))
+                    (recur (db/get-n-oldest-comments-before! 100 (:comment/updated-at (first (sort-by :comment/updated-at comments))))))))))

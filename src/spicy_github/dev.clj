@@ -5,6 +5,7 @@
               [spicy-github.db :as db]
               [spicy-github.util :refer :all]
               [spicy-github.adapters :as adapters]
+              [cheshire.core :refer :all]
               [clojure.stacktrace]
               [malli.dev.pretty]
               [hiccup.util]
@@ -15,15 +16,19 @@
 (defn should-remap-db [] (parse-boolean (load-env :remap-db "REMAP_DB" :REMAP_DB "false")))
 
 (defn- remap! [db-query! parse-fn json-payload-keyword updated-at-keyword table-name]
-    (loop [start-time (Instant/now)]
-        (let [issue-batch (db-query! start-time)]
-            (run!
-                #(db/persist-record! (parse-fn (parse-json (json-payload-keyword %))))
-                issue-batch)
-            (timbre/debug (str "Processed " table-name " at " start-time))
-            (if (== db/default-page-size (count issue-batch))
-                (recur (updated-at-keyword (last issue-batch)))
-                (timbre/info (str "Successfully remapped " table-name))))))
+    (let [checkpoint-id (str "remap!" table-name)
+          checkpoint (db/get-by-id! :checkpoint checkpoint-id)
+          checkpoint-time (spicy-github.adapters/checkpoint-get-time checkpoint (Instant/now))]
+        (loop [start-time checkpoint-time]
+            (let [issue-batch (db-query! start-time)]
+                (run!
+                    #(db/persist-record! (parse-fn (parse-json (json-payload-keyword %))))
+                    issue-batch)
+                (timbre/debug (str "Processed " table-name " at " start-time))
+                (db/persist-record! (spicy-github.adapters/checkpoint-create checkpoint-id checkpoint-time))
+                (if (== db/default-page-size (count issue-batch))
+                    (recur (updated-at-keyword (first (sort-by updated-at-keyword issue-batch))))
+                    (timbre/info (str "Successfully remapped " table-name)))))))
 
 (defn remap-issues! []
     (remap! db/get-n-latest-issues-before! adapters/parse-issue :issue/github-json-payload :issue/updated-at "issues"))
