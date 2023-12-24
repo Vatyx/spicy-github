@@ -129,7 +129,10 @@
     ([checkpoint]
      (checkpoint-get-time checkpoint (Instant/now)))
     ([checkpoint default]
-     (get (parse-json (get :checkpoint/json-payload checkpoint)) :time default)))
+     (let [default-time (get (parse-json (:checkpoint/json-payload checkpoint)) :time default)]
+         (if (inst? default-time)
+             default-time
+             (clojure.instant/read-instant-date default-time)))))
 
 (comment
 
