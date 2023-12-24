@@ -11,8 +11,7 @@
               [hiccup.util]
               [gungnir.model]
               [taoensso.timbre :as timbre])
-    (:import (java.time Instant)
-             (java.util Date)))
+    (:import (java.time Instant)))
 
 (defn should-remap-db [] (parse-boolean (load-env :remap-db "REMAP_DB" :REMAP_DB "false")))
 
