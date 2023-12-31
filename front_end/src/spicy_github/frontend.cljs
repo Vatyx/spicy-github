@@ -264,9 +264,9 @@
                                                        (and
                                                            (is-spicy-enough? issue)
                                                            (let [issue-id (:issue/id issue)
-                                                                 new-issue (not (or (contains? existing-ids issue-id) (contains? @new-ids issue-id)))]
+                                                                 is-new-issue (not (or (contains? existing-ids issue-id) (contains? @new-ids issue-id)))]
                                                                (swap! new-ids conj issue-id)
-                                                               new-issue)
+                                                               is-new-issue)
                                                            )) new-issues)))))
     (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn))
     (when (not (has-enough-issues)) (@issue-initialization)))
