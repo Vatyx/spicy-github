@@ -53,7 +53,6 @@
 
 (def comment-body-style {:flex    :9
                          :display :inline
-                         ;:padding "0px 5px 0px 5px"
                          })
 
 (def issue-header-style {:text-align :center})
