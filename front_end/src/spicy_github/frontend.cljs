@@ -142,7 +142,7 @@
     [:div (stylefy/use-style hidden-style {:on-click #(swap-is-selected comment-id)})])
 
 (defn- is-spicy? [comment]
-    (>= (get comment :comment/spicy-rating 0) 3.5))
+    (>= (get comment :comment/spicy-rating 0) api/minimum-spicy-score))
 
 (defn- get-spicy-comment-html [comment]
     (let [is-spicy (is-spicy? comment)

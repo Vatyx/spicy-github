@@ -4,8 +4,12 @@
     (:require [cljs-http.client :as http]
               [cljs.core.async :refer [<!]]))
 
+(def minimum-spicy-score 5)
+
 (def spicy-endpoint (str (spicy-env :spicy-endpoint) ":" (spicy-env :front-end-port) "/"))
-(def spicy-random-endpoint (str spicy-endpoint "random-issues/"))
+(defn spicy-random-endpoint
+    ([] (spicy-random-endpoint minimum-spicy-score))
+    ([min-score] (str spicy-endpoint "random-issues/" min-score)))
 
 (defn- get-n-issues-before-endpoint
     ([] (get-n-issues-before-endpoint (.now js/Date)))
@@ -22,7 +26,7 @@
     ([response-fn is-loading-issues before] (get-issues-before-get-response (get-n-issues-before-endpoint before) response-fn is-loading-issues)))
 
 (defn- get-n-random-issues [response-fn is-loading-issues]
-    (get-issues-before-get-response spicy-random-endpoint response-fn is-loading-issues))
+    (get-issues-before-get-response (spicy-random-endpoint) response-fn is-loading-issues))
 
 (defn get-issues [response-fn is-loading-issues]
     (get-n-random-issues response-fn is-loading-issues))
