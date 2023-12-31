@@ -52,10 +52,11 @@
                               :cursor           :auto})
 
 (def comment-body-style {:flex    :9
-                         :display :inline
-                         })
+                         :display :inline})
 
-(def issue-header-style {:text-align :center})
+(def issue-header-style {:text-align    :center
+                         :margin-top    :0px
+                         :margin-bottom :0px})
 
 (def issue-without-comments-style
     {:border-radius    :20px
