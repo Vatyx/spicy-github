@@ -17,12 +17,11 @@
 
 (def cli-options
     [["-s" "--scrape SCRAPE" "Scrape github"
-      :default false
+      :default true
       :parse-fn #(Boolean/parseBoolean %)]
      ["-r" "--remap REMAP" "Remap issues and comments"
       :default false
-      :parse-fn #(Boolean/parseBoolean %)]
-     ["-h" "--help"]])
+      :parse-fn #(Boolean/parseBoolean %)]])
 
 (defn -main
     [& args]

@@ -24,7 +24,6 @@
                     :cursor        :auto})
 
 (def comment-container-style {:font-family      "'open_sans_light', 'open_sans', 'Courier New'"
-                              :display          :flex
                               :background-color :#333
                               :color            :#fff
                               :padding          "5px 15px 5px 15px"
@@ -64,8 +63,7 @@
                    :border-radius    :50%
                    :cursor           :pointer})
 
-(def md-block-wrapper {:max-width  :900px
-                       :max-height :1600px
+(def md-block-wrapper {:max-height :1600px
                        :padding    :10px
                        :overflow   :auto})
 
