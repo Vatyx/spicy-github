@@ -7,6 +7,8 @@
 
 (defn frontend-initialize! [] (stylefy/init {:dom (stylefy-rum/init)}))
 
+; Styles
+; ------
 (defn add-font-faces! []
     (stylefy/font-face {:font-family "'open_sans'"
                         :src         "url('./fonts/OpenSans-Regular.woff2') format('woff2'), url('./fonts/OpenSans-Regular.woff') format('woff'), url('./fonts/OpenSans-Regular.ttf')"
@@ -106,6 +108,8 @@
                              :color           :#5c55fc
                              :font-weight     :bold})
 
+; Rendering
+; ---------
 (defn- get-user-html
     ([user] (get-user-html user user-image-style))
     ([user style]
@@ -197,11 +201,14 @@
                  (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
       (vec (conj (map get-spicy-comment-html (collapse-comments (get-ordered-comments (:issue/comments issue)))) :div))]])
 
+
 (defn- get-issues-html [issues]
     [:div (vec (conj (map get-issue-html issues) :div))])
 
 ;; https://gist.github.com/nberger/b5e316a43ffc3b7d5e084b228bd83899
 
+; Javascript
+; ----------
 (defn- get-scroll-top []
     (if (exists? (.-pageYOffset js/window))
         (.-pageYOffset js/window)
@@ -232,6 +239,9 @@
                                            (apply f args))
                                       threshold))))))
 
+(defn- is-spicy-enough? [issue]
+    (not (empty? (filter #(is-spicy? %) (:issue/comments issue)))))
+
 (def minimum-issues 10)
 
 (def issues (atom []))
@@ -251,10 +261,13 @@
         (reset! issues (let [existing-ids (set (map :issue/id @issues))
                              new-ids (atom (set {}))]
                            (concat @issues (filter (fn [issue]
-                                                       (let [issue-id (:issue/id issue)
-                                                             new-issue (not (or (contains? existing-ids issue-id) (contains? @new-ids issue-id)))]
-                                                           (swap! new-ids conj issue-id)
-                                                           new-issue)) new-issues)))))
+                                                       (and
+                                                           (is-spicy-enough? issue)
+                                                           (let [issue-id (:issue/id issue)
+                                                                 new-issue (not (or (contains? existing-ids issue-id) (contains? @new-ids issue-id)))]
+                                                               (swap! new-ids conj issue-id)
+                                                               new-issue)
+                                                           )) new-issues)))))
     (when (not (nil? @refresh-issues-fn)) (@refresh-issues-fn))
     (when (not (has-enough-issues)) (@issue-initialization)))
 
