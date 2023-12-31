@@ -7,6 +7,22 @@
 
 (defn frontend-initialize! [] (stylefy/init {:dom (stylefy-rum/init)}))
 
+; Data
+; ----
+
+; https://docs.github.com/en/rest/reactions/reactions?apiVersion=2022-11-28
+(def reaction-mapping {:+1       "\uD83D\uDC4D"
+                       :-1       "\uD83D\uDC4E"
+                       :laugh    "\uD83D\uDE04"
+                       :confused "\uD83D\uDE15"
+                       :heart    "❤\uFE0F"
+                       :hooray   "\uD83C\uDF89"
+                       :rocket   "\uD83D\uDE80"
+                       :eyes     "\uD83D\uDC40"})
+
+(defn- get-reaction [reaction-keyword]
+    (get reaction-mapping reaction-keyword ""))
+
 ; Styles
 ; ------
 (defn add-font-faces! []
@@ -28,7 +44,7 @@
 (def comment-container-style {:font-family      "'open_sans_light', 'open_sans', 'Courier New'"
                               :background-color :#333
                               :color            :#fff
-                              :padding          "5px 15px 5px 15px"
+                              :padding          "5px 5px 5px 5px"
                               :border-radius    :20px
                               :margin           :5px
                               :opacity          :0.8
@@ -37,7 +53,8 @@
 
 (def comment-body-style {:flex    :9
                          :display :inline
-                         :padding "0px 5px 0px 5px"})
+                         ;:padding "0px 5px 0px 5px"
+                         })
 
 (def issue-header-style {:text-align :center})
 
@@ -108,6 +125,31 @@
                              :color           :#5c55fc
                              :font-weight     :bold})
 
+(def reactions-container-style {:display        "flex !important"
+                                :align-items    "center !important"
+                                :flex-wrap      "wrap !important"
+                                :flex-direction "row !important"
+                                :box-sizing     :border-box})
+
+(def reaction-single-container-style {:height           :26px
+                                      :padding          "0 4px !important"
+                                      :font-size        :12px
+                                      :line-height      :26px
+                                      :background-color :transparent
+                                      :border           "1px solid var(--borderColor-default, var(--color-border-default, #d2dff0))"
+                                      :border-radius    :100px
+                                      :margin           "0 4px !important"})
+
+(def emoji-style {:display     :inline-block
+                  :width       :16px
+                  :height      :16px
+                  :font-size   "1em !important"
+                  :line-height :1.25})
+
+(def emoji-count-style {:height      :24px
+                        :padding     "0 4px"
+                        :margin-left :2px})
+
 ; Rendering
 ; ---------
 (defn- get-user-html
@@ -129,11 +171,24 @@
         (when (not (nil? @refresh-issues-fn))
             (@refresh-issues-fn))))
 
+(defn- get-reaction-html [reaction-entry]
+    [:div (stylefy/use-style reaction-single-container-style)
+     [:div (stylefy/use-style emoji-style) (get-reaction (get reaction-entry 0))]
+     [:span (stylefy/use-style emoji-count-style) (str (get reaction-entry 1 0))]])
+
 (defn- get-static-comment-html [comment]
     [:div (stylefy/use-style comment-style) (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
       [:div (stylefy/use-style comment-body-style)
-       [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
+       [:div (stylefy/use-style md-block-wrapper)
+        [:md-block (:comment/body comment)]
+        [:div (stylefy/use-style reactions-container-style)
+         (vec (conj
+                  (map get-reaction-html
+                       (sort-by (fn [entry] (get entry 1)) >
+                                (filter
+                                    #(and (not (= :total_count (get % 0))) (not (== 0 (get % 1 0))))
+                                    (js->clj (:comment/reaction comment)))))))]]]]])
 
 (defn- get-comment-html [comment comment-id]
     ; We want to toggle the parent's collapse function
