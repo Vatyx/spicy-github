@@ -123,20 +123,22 @@
 
 (def issue-title-text-style {:text-decoration :none
                              :color           :#5c55fc
+                             :overflow        :auto
                              :font-weight     :bold})
 
-(def reactions-container-style {:display        "flex !important"
-                                :align-items    "center !important"
-                                :flex-wrap      "wrap !important"
-                                :flex-direction "row !important"
-                                :box-sizing     :border-box})
+(def reactions-container-style {:display         "flex !important"
+                                :align-items     "center !important"
+                                :flex-wrap       "wrap !important"
+                                :flex-direction  "row !important"
+                                :justify-content :center
+                                :box-sizing      :border-box})
 
 (def reaction-single-container-style {:height           :26px
                                       :padding          "0 4px !important"
                                       :font-size        :12px
                                       :line-height      :26px
                                       :background-color :transparent
-                                      :border           "1px solid var(--borderColor-default, var(--color-border-default, #d2dff0))"
+                                      :border           "1px solid"
                                       :border-radius    :100px
                                       :margin           "0 4px !important"})
 
@@ -176,19 +178,22 @@
      [:div (stylefy/use-style emoji-style) (get-reaction (get reaction-entry 0))]
      [:span (stylefy/use-style emoji-count-style) (str (get reaction-entry 1 0))]])
 
+(defn- get-and-filter-reaction-html [reactions]
+    (vec (conj
+             (map get-reaction-html
+                  (sort-by (fn [entry] (get entry 1)) >
+                           (filter
+                               #(and (not (= :total_count (get % 0))) (not (== 0 (get % 1 0))))
+                               reactions))))))
+
 (defn- get-static-comment-html [comment]
     [:div (stylefy/use-style comment-style) (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
+      [:div (stylefy/use-style (merge reactions-container-style {:justify-content :left}))
+       (get-and-filter-reaction-html (js->clj (:comment/reaction comment)))]
       [:div (stylefy/use-style comment-body-style)
        [:div (stylefy/use-style md-block-wrapper)
-        [:md-block (:comment/body comment)]
-        [:div (stylefy/use-style reactions-container-style)
-         (vec (conj
-                  (map get-reaction-html
-                       (sort-by (fn [entry] (get entry 1)) >
-                                (filter
-                                    #(and (not (= :total_count (get % 0))) (not (== 0 (get % 1 0))))
-                                    (js->clj (:comment/reaction comment)))))))]]]]])
+        [:md-block (:comment/body comment)]]]]])
 
 (defn- get-comment-html [comment comment-id]
     ; We want to toggle the parent's collapse function
@@ -248,6 +253,7 @@
     [:div (if (empty? (:issue/comments issue))
               (stylefy/use-style issue-without-comments-style)
               (stylefy/use-style issue-with-comments-style))
+     [:div (stylefy/use-style (merge reactions-container-style {:padding :5px})) (get-and-filter-reaction-html (js->clj (:issue/reaction issue)))]
      [:h1 (stylefy/use-style issue-header-style)
       [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/html-url issue)}) (:issue/title issue)]]
      [:details
