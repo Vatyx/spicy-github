@@ -195,7 +195,7 @@
 (defn- get-non-spicy-comment-html [comment comment-id]
     ; We want to toggle the parent's collapse function
     [:div (stylefy/use-style comment-style) (-> comment :comment/user get-user-html)
-     [:div (stylefy/use-style (merge comment-container-style {:cursor :zoom-out} {:on-click #(swap-is-selected (get @collapsed-comments-parents-by-id comment-id comment-id))}))
+     [:div (stylefy/use-style (merge comment-container-style {:cursor :zoom-out}) {:on-click #(swap-is-selected (get @collapsed-comments-parents-by-id comment-id comment-id))})
       [:div (stylefy/use-style comment-body-style)
        [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
 
