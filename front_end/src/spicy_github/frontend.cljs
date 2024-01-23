@@ -38,8 +38,7 @@
 (def comment-style {:border-radius :10px
                     :margin        :10px
                     :color         :#fff
-                    :display       :flex
-                    :cursor        :auto})
+                    :display       :flex})
 
 (def comment-container-style {:font-family      "'open_sans_light', 'open_sans', 'Courier New'"
                               :background-color :#333
@@ -48,8 +47,7 @@
                               :border-radius    :20px
                               :margin           :5px
                               :opacity          :0.8
-                              :max-width        :820px
-                              :cursor           :auto})
+                              :max-width        :820px})
 
 (def comment-body-style {:flex    :9
                          :display :inline})
@@ -80,13 +78,13 @@
                    :margin-bottom    :5px
                    :background-color :#fff
                    :border-radius    :50%
-                   :cursor           :pointer})
+                   :cursor           :zoom-in})
 
 (def md-block-wrapper {:max-height :1600px
                        :padding    :10px
                        :overflow   :auto})
 
-(def issue-with-comments-style (conj issue-without-comments-style {:cursor :pointer}))
+(def issue-with-comments-style (merge issue-without-comments-style {:cursor :pointer}))
 
 (def issue-body-style {:flex    :9
                        :padding "5px 5px 20px 20px"})
@@ -187,7 +185,7 @@
                                reactions))))))
 
 (defn- get-static-comment-html [comment]
-    [:div (stylefy/use-style comment-style) (-> comment :comment/user get-user-html)
+    [:div (stylefy/use-style (merge comment-style {:cursor :auto})) (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
       [:div (stylefy/use-style (merge reactions-container-style {:justify-content :left}))
        (get-and-filter-reaction-html (js->clj (:comment/reaction comment)))]
@@ -195,9 +193,9 @@
        [:div (stylefy/use-style md-block-wrapper)
         [:md-block (:comment/body comment)]]]]])
 
-(defn- get-comment-html [comment comment-id]
+(defn- get-non-spicy-comment-html [comment comment-id]
     ; We want to toggle the parent's collapse function
-    [:div (stylefy/use-style (merge comment-style {:cursor :pointer}) {:on-click #(swap-is-selected (get @collapsed-comments-parents-by-id comment-id comment-id))}) (-> comment :comment/user get-user-html)
+    [:div (stylefy/use-style (merge comment-style {:cursor :zoom-out}) {:on-click #(swap-is-selected (get @collapsed-comments-parents-by-id comment-id comment-id))}) (-> comment :comment/user get-user-html)
      [:div (stylefy/use-style comment-container-style)
       [:div (stylefy/use-style comment-body-style)
        [:div (stylefy/use-style md-block-wrapper) [:md-block (:comment/body comment)]]]]])
@@ -214,7 +212,7 @@
         (if is-spicy
             (get-static-comment-html comment)
             (if (get @visible-comments comment-id false)
-                (get-comment-html comment comment-id)
+                (get-non-spicy-comment-html comment comment-id)
                 (get-hidden-comment-html comment-id)))))
 
 (defn- get-ordered-comments [comments]
@@ -250,17 +248,19 @@
             (concat to-render (collapse-boring-comments boring-comments)))))
 
 (defn- get-issue-html [issue]
-    [:div (if (empty? (:issue/comments issue))
-              (stylefy/use-style issue-without-comments-style)
-              (stylefy/use-style issue-with-comments-style))
-     [:div (stylefy/use-style (merge reactions-container-style {:padding :5px})) (get-and-filter-reaction-html (js->clj (:issue/reaction issue)))]
-     [:h1 (stylefy/use-style issue-header-style)
-      [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/html-url issue)}) (:issue/title issue)]]
-     [:details
-      [:summary [:div (stylefy/use-style issue-container-style)
-                 [:div (stylefy/use-style md-block-wrapper) [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]]
-                 (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
-      (vec (conj (map get-spicy-comment-html (collapse-comments (get-ordered-comments (:issue/comments issue)))) :div))]])
+    (let [comments (:issue/comments issue)
+          to-render-issue-comments (collapse-comments (get-ordered-comments comments))]
+        [:div (if (empty? comments)
+                  (stylefy/use-style issue-without-comments-style)
+                  (stylefy/use-style issue-with-comments-style))
+         [:div (stylefy/use-style (merge reactions-container-style {:padding :5px})) (get-and-filter-reaction-html (js->clj (:issue/reaction issue)))]
+         [:h1 (stylefy/use-style issue-header-style)
+          [:a (merge (stylefy/use-style issue-title-text-style) {:href (:issue/html-url issue)}) (:issue/title issue)]]
+         [:details
+          [:summary [:div (stylefy/use-style issue-container-style)
+                     [:div (stylefy/use-style md-block-wrapper) [:md-block (stylefy/use-style issue-body-style) (:issue/body issue)]]
+                     (-> (:issue/user issue) (get-user-html issue-user-image-style))]]
+          (vec (conj (map get-spicy-comment-html to-render-issue-comments) :div))]]))
 
 
 (defn- get-issues-html [issues]
