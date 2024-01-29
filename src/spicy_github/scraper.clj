@@ -228,13 +228,17 @@
 
 (defn process-scraped-repositories []
     (loop [latest-repository (get-oldest-processed-repository!)]
-        (if (nil? latest-repository)
-            (do
-                (timbre/debug "No new repositories to process, waiting...")
-                (Thread/sleep (int (rand (* 30 1000)))))
-            (do
-                (process-repositories [latest-repository])
-                (mark-repository-as-processed! latest-repository)))
+        (try
+            (if (nil? latest-repository)
+                (do
+                     (timbre/debug "No new repositories to process, waiting...")
+                     (Thread/sleep (int (rand (* 30 1000)))))
+                (do
+                     (process-repositories [latest-repository])
+                     (mark-repository-as-processed! latest-repository)))
+            (catch Exception e
+                 (clojure.stacktrace/print-stack-trace e)
+                 (timbre/error (str e))))
         (recur (get-oldest-processed-repository!))))
 
 (defn scrape-repositories [min-stars max-stars]
