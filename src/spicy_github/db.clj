@@ -41,7 +41,7 @@
      :password      (db-password)
      :port-number   (db-port)})
 
-(def reaction-keys ["heart" "eyes" "hooray" "confused" "+1" "laugh" "rocket"])
+(def reaction-keys ["heart" "eyes" "-1" "hooray" "confused" "+1" "laugh" "rocket"])
 
 (defn- log-and-return-migration [migration]
     (timbre/info (str "Loading migration " migration))
