@@ -41,7 +41,7 @@
      :password      (db-password)
      :port-number   (db-port)})
 
-(def reaction-keys ["heart" "eyes" "-1" "hooray" "confused" "+1" "laugh" "rocket"])
+(def allowed-reaction-keys #{"heart" "eyes" "-1" "hooray" "confused" "+1" "laugh" "rocket"})
 
 (defn- log-and-return-migration [migration]
     (timbre/info (str "Loading migration " migration))
@@ -278,15 +278,16 @@
         (:count)))
 
 (defn get-ranked-issues [offset ordered-reaction-keys]
-    (if (empty? ordered-reaction-keys)
-        (-> (helpers/select :*)
-            (helpers/from :issue)
-            (helpers/order-by :issue/id)
-            (helpers/offset offset)
-            (helpers/limit default-page-size)
-            (q/all!))
-        (jdbc/execute!
-            d/*datasource*
-            [(str "SELECT * FROM issue ORDER BY " (cs/join ", " (map (fn [reaction-key] (str "(reaction_json::json->>'" reaction-key "')::int desc")) ordered-reaction-keys)) " OFFSET ? LIMIT ?")
-             offset
-             default-page-size])))
+    (let [filtered-ordered-reaction-keys (filter (fn [reaction-key] (contains? allowed-reaction-keys reaction-key)) ordered-reaction-keys)]
+        (if (empty? filtered-ordered-reaction-keys)
+            (-> (helpers/select :*)
+                (helpers/from :issue)
+                (helpers/order-by :issue/id)
+                (helpers/offset offset)
+                (helpers/limit default-page-size)
+                (q/all!))
+            (jdbc/execute!
+                d/*datasource*
+                [(str "SELECT * FROM issue ORDER BY " (cs/join ", " (map (fn [reaction-key] (str "(reaction_json::json->>'" reaction-key "')::int desc")) filtered-ordered-reaction-keys)) " OFFSET ? LIMIT ?")
+                 offset
+                 default-page-size]))))
