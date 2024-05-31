@@ -3,8 +3,8 @@
     (:require [clojure.edn :as edn]
               [clojure.string :as cs]
               [gungnir.changeset :as c]
-              [gungnir.database]
-              [gungnir.model]
+              [gungnir.database :as d]
+              [gungnir.model :as m]
               [gungnir.migration]
               [gungnir.transaction :as transaction]
               [gungnir.query :as q]
@@ -41,6 +41,8 @@
      :password      (db-password)
      :port-number   (db-port)})
 
+(def reaction-keys ["heart" "eyes" "hooray" "confused" "+1" "laugh" "rocket"])
+
 (defn- log-and-return-migration [migration]
     (timbre/info (str "Loading migration " migration))
     migration)
@@ -62,7 +64,7 @@
                                (filter (fn [path] (cs/ends-with? path ".edn")))
                                (sort))))))))
 
-(defn register-db! [] (gungnir.database/make-datasource! (db-config)))
+(defn register-db! [] (d/make-datasource! (db-config)))
 
 (defn- load-resources [] (spicy-load-resources "migrations"))
 
@@ -92,7 +94,7 @@
 
 (defn persist!
     ([changeset query-by-id! clean-record equality-check?]
-     (persist! changeset gungnir.database/*datasource* query-by-id! clean-record equality-check?))
+     (persist! changeset d/*datasource* query-by-id! clean-record equality-check?))
     ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
      (let [input-record (:changeset/result changeset)
            diff (:changeset/diff changeset)]
@@ -100,12 +102,12 @@
              (if (some? existing)
                  (if (equality-check? existing input-record)
                      existing
-                     (let [updated-record (gungnir.database/update! (clean-record existing diff) datasource)
+                     (let [updated-record (d/update! (clean-record existing diff) datasource)
                            update-errors (:changeset/errors updated-record)]
                          (if (some? update-errors)
                              input-record
                              updated-record)))
-                 (let [_ (gungnir.database/insert! changeset datasource)]
+                 (let [_ (d/insert! changeset datasource)]
                      input-record))))))
 
 (defn persist-record! [record]
@@ -166,8 +168,6 @@
                      (helpers/order-by [:updated-at :desc])
                      (helpers/limit n)
                      (q/all! table))))))
-
-
 
 (defn get-n-oldest!
     ([table query-relations! n]
@@ -269,10 +269,24 @@
 
 (defn get-comment-count-for-issue [issue-id]
     (-> (jdbc/execute!
-            gungnir.database/*datasource*
+            d/*datasource*
             (-> (helpers/select :%count.*)
                 (helpers/from :comment)
                 (helpers/where [:= :comment/issue-id issue-id])
                 (sql/format)))
         (first)
         (:count)))
+
+(defn get-ranked-issues [offset ordered-reaction-keys]
+    (if (empty? ordered-reaction-keys)
+        (-> (helpers/select :*)
+            (helpers/from :issue)
+            (helpers/order-by :issue/id)
+            (helpers/offset offset)
+            (helpers/limit default-page-size)
+            (q/all!))
+        (jdbc/execute!
+            d/*datasource*
+            [(str "SELECT * FROM issue ORDER BY " (cs/join ", " (map (fn [reaction-key] (str "(reaction_json::json->>'" reaction-key "')::int desc")) ordered-reaction-keys)) " OFFSET ? LIMIT ?")
+             offset
+             default-page-size])))
