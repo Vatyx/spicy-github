@@ -51,6 +51,10 @@
      :headers {"Content-Type" "application/json"}
      :body    (get-n-random-issues n)})
 
+(defn- get-issues-for-comments
+    ([] (get-issues-for-comments 0))
+    ([offset]))
+
 (defroutes app-routes
            (GET "/" [] landing-page)
            (GET "/latest-issues/:before" [before] (get-n-latest-issues-before-api! before))

@@ -25,6 +25,8 @@
     (to-json [dt gen]
         (cheshire.generate/write-string gen (str dt))))
 
+(def default-page-size 25)
+
 (defn- db-server-name [] (load-env :rds-hostname "RDS_HOSTNAME" :RDS_HOSTNAME))
 (defn- db-port [] (Integer/parseInt (load-env :rds-port "RDS_PORT" :RDS_PORT)))
 (defn- db-name [] (load-env :rds-db-name "RDS_DB_NAME" :RDS_DB_NAME))
@@ -125,7 +127,6 @@
             (timbre/error (str e))
             record)))
 
-(def default-page-size 100)
 
 (defn get-by-id! [table id] (q/find! table id))
 
@@ -146,52 +147,42 @@
     ([table query-relations!] (get-n-random! table query-relations! {}))
     ([table query-relations! query-map] (get-n-random! table query-relations! query-map default-page-size))
     ([table query-relations! query-map n]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> (merge {:select [:*] :limit n :tablesample "system(5)"} query-map)
-                             (q/all! table))))))))
+     (doall (map query-relations!
+                 (-> (merge {:select [:*] :limit n :tablesample "system(5)"} query-map)
+                     (q/all! table))))))
 
 (defn get-n-latest-before!
     ([table query-relations! before] (get-n-latest-before! table query-relations! default-page-size before))
     ([table query-relations! n before]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> (helpers/where [:< :updated-at before])
-                             (helpers/order-by [:updated-at :desc])
-                             (helpers/limit n)
-                             (q/all! table)))))))
+     (doall (map query-relations!
+                 (-> (helpers/where [:< :updated-at before])
+                     (helpers/order-by [:updated-at :desc])
+                     (helpers/limit n)
+                     (q/all! table)))))
     ([table query-relations! n before where-clause]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> where-clause
-                             (helpers/where [:< :updated-at before])
-                             (helpers/order-by [:updated-at :desc])
-                             (helpers/limit n)
-                             (q/all! table))))))))
+     (doall (map query-relations!
+                 (-> where-clause
+                     (helpers/where [:< :updated-at before])
+                     (helpers/order-by [:updated-at :desc])
+                     (helpers/limit n)
+                     (q/all! table))))))
 
 
 
 (defn get-n-oldest!
     ([table query-relations! n]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> (helpers/order-by :updated-at)
-                             (helpers/limit n)
-                             (q/all! table))))))))
+     (doall (map query-relations!
+                 (-> (helpers/order-by :updated-at)
+                     (helpers/limit n)
+                     (q/all! table))))))
 
 (defn get-n-oldest-before!
     ([table query-relations! n before]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> (helpers/where [:< :updated-at before])
-                             (helpers/order-by :updated-at)
-                             (helpers/limit n)
-                             (q/all! table))))))))
+     (doall (map query-relations!
+                 (-> (helpers/where [:< :updated-at before])
+                     (helpers/order-by :updated-at)
+                     (helpers/limit n)
+                     (q/all! table))))))
 
 (defn query-comment-relations! [comment]
     (q/load! comment :comment/user))
@@ -263,3 +254,25 @@
         (if (>= (count result) n)
             result
             (recur (concat result (retrieval-fn))))))
+
+; New APIs
+; --------
+
+(defn get-comments-for-issue [issue-id offset]
+    (-> (helpers/select :*)
+        (helpers/from :comment)
+        (helpers/where [:= :comment/issue-id issue-id])
+        (helpers/order-by :comment/id)
+        (helpers/offset offset)
+        (helpers/limit default-page-size)
+        (q/all!)))
+
+(defn get-comment-count-for-issue [issue-id]
+    (-> (jdbc/execute!
+            gungnir.database/*datasource*
+            (-> (helpers/select :%count.*)
+                (helpers/from :comment)
+                (helpers/where [:= :comment/issue-id issue-id])
+                (sql/format)))
+        (first)
+        (:count)))
