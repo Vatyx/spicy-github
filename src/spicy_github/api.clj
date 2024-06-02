@@ -21,6 +21,9 @@
      :headers {"Content-Type" "text/html"}
      :body    frontend/index-html})
 
+(defn- not-found [request]
+    {:status 404})
+
 (def minimum-count 10)
 
 (defn get-n-random-issues [n]
@@ -51,21 +54,50 @@
      :headers {"Content-Type" "application/json"}
      :body    (get-n-random-issues n)})
 
-(defn- get-issues-for-comments
-    ([] (get-issues-for-comments 0))
-    ([offset]))
+(defn- get-comments-for-issues
+    ([issue-id] (get-comments-for-issues issue-id 0))
+    ([issue-id offset]
+     (let [comment-count (db/get-comment-count-for-issue issue-id)]
+         {:total-count comment-count
+          :items       (db/get-comments-for-issue issue-id offset)})))
+
+(defn- get-ranked-issues [offset ranked-reactions]
+    {:items (db/get-ranked-issues (Integer/parseInt offset) ranked-reactions)})
+
+(defn- get-ranked-comments [offset ranked-reactions]
+    {:items (db/get-ranked-comments (Integer/parseInt offset) ranked-reactions)})
+
+(defn- get-comments-response-for-issues [request]
+    (let [body (let [params (:params request)]
+                   (cond (and (:issue-id params) (:offset params)) (get-comments-for-issues (:issue-id params) (:offset params))
+                         (:issue-id params) (get-comments-for-issues (:issue-id params))
+                         :else nil))]
+        {:status  (if (nil? body) 404 200)
+         :headers {"Content-Type" "application/json"}
+         :body    (if (nil? body) {} body)}))
 
 (defroutes app-routes
            (GET "/" [] landing-page)
            (GET "/latest-issues/:before" [before] (get-n-latest-issues-before-api! before))
            (GET "/random-issues/" [] (get-n-random-issues-api! (str minimum-count)))
            (GET "/random-issues/:n" [n] (get-n-random-issues-api! n))
+           (GET "/comments" request (get-comments-response-for-issues request))
+           (GET "/ranked-issues" request
+               (let [params (:params request)]
+                   (cond (and (:reaction params) (:offset params)) (get-ranked-issues (:offset params) (:reaction params))
+                         (:reaction params) (get-ranked-issues 0 (:reaction params))
+                         :else (not-found request))))
+           (GET "/ranked-comments" request
+               (let [params (:params request)]
+                   (cond (and (:reaction params) (:offset params)) (get-ranked-comments (:offset params) (:reaction params))
+                         (:reaction params) (get-ranked-comments 0 (:reaction params))
+                         :else (not-found request))))
            (route/resources "/")
            (route/not-found "Not Found"))
 
 (defn- app-with-defaults [reload-server]
-    (do (timbre/info (str "Loading application (reload server:" reload-server ")"))
-        (wrap-defaults app-routes site-defaults)))
+    (timbre/info (str "Loading application (reload server:" reload-server ")"))
+    (wrap-defaults app-routes site-defaults))
 
 (defn app []
     (let [reload-server (parse-boolean (load-env :reload-server "RELOAD_SERVER" :RELOAD_SERVER "false"))]

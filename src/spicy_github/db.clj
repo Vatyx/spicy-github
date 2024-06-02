@@ -277,12 +277,12 @@
         (first)
         (:count)))
 
-(defn get-ranked-issues [offset ordered-reaction-keys]
+(defn- get-reaction-ranked-items [offset ordered-reaction-keys table table-id]
     (let [filtered-ordered-reaction-keys (filter (fn [reaction-key] (contains? allowed-reaction-keys reaction-key)) ordered-reaction-keys)]
         (if (empty? filtered-ordered-reaction-keys)
             (-> (helpers/select :*)
-                (helpers/from :issue)
-                (helpers/order-by :issue/id)
+                (helpers/from table)
+                (helpers/order-by table-id)
                 (helpers/offset offset)
                 (helpers/limit default-page-size)
                 (q/all!))
@@ -291,3 +291,9 @@
                 [(str "SELECT * FROM issue ORDER BY " (cs/join ", " (map (fn [reaction-key] (str "(reaction_json::json->>'" reaction-key "')::int desc")) filtered-ordered-reaction-keys)) " OFFSET ? LIMIT ?")
                  offset
                  default-page-size]))))
+
+(defn get-ranked-issues [offset ordered-reaction-keys]
+    (get-reaction-ranked-items offset ordered-reaction-keys :issue :issue/id))
+
+(defn get-ranked-comments [offset ordered-reaction-keys]
+    (get-reaction-ranked-items offset ordered-reaction-keys :comment :comment/id))
