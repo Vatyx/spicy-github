@@ -41,8 +41,10 @@
     :ring {:handler spicy-github.api/app}
     :cljsbuild {:builds [{:source-paths ["front_end/src"]
                           :compiler     {:output-to     "resources/public/javascript/front_end.js"
+                                         :output-dir    "resources/public/javascript/output"
                                          :optimizations :advanced
-                                         :pretty-print  false}
+                                         :pretty-print  false
+                                         :source-map    "resources/public/javascript/front_end.js.map"}
                           :jar          true}]}
     :clean-targets ^{:protect false} [:target-path "resources/public/javascript/front_end.js"]
     :profiles {:dev          [:project/dev :profiles/dev]

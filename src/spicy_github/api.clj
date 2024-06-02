@@ -29,7 +29,7 @@
 (defn get-n-random-issues [n]
     (timbre/info "Received n-random issues with n: " n)
     (generate-string
-        (map adapters/sanitize-issue-for-api
+        (map #(adapters/sanitize-issue-for-api % true)
              (if (nil? n)
                  (db/accumulate-until-at-least (partial db/get-n-random-issues-from-highly-rated-comments! minimum-count) minimum-count)
                  (let [wrapped-count (max minimum-count (min 50 (parse-long n)))]
@@ -38,7 +38,7 @@
 (defn get-n-latest-issues-before! [before]
     (timbre/info "Received n-latest-issues-before:" (str before))
     (generate-string
-        (map adapters/sanitize-issue-for-api
+        (map #(adapters/sanitize-issue-for-api % true)
              (db/get-n-latest-issues-before!
                  (if (nil? before)
                      (Instant/now)
@@ -57,24 +57,30 @@
 (defn- get-comments-for-issues
     ([issue-id] (get-comments-for-issues issue-id 0))
     ([issue-id offset]
+     (timbre/info "Received get comments for issues command with offset" offset "and issue-id" issue-id)
      (let [comment-count (db/get-comment-count-for-issue issue-id)]
          {:total-count comment-count
-          :items       (db/get-comments-for-issue issue-id offset)})))
+          :items       (map adapters/sanitize-comment-for-api (db/get-comments-for-issue issue-id offset))})))
 
 (defn- get-ranked-issues [offset ranked-reactions]
-    {:items (db/get-ranked-issues (Integer/parseInt offset) ranked-reactions)})
+    (timbre/info "Received ranked issues command with offset" offset "and ranked reactions" ranked-reactions)
+    (generate-string {:items (map #(adapters/sanitize-issue-for-api % false) (db/get-ranked-issues (Integer/parseInt offset) ranked-reactions))}))
 
 (defn- get-ranked-comments [offset ranked-reactions]
-    {:items (db/get-ranked-comments (Integer/parseInt offset) ranked-reactions)})
+    (timbre/info "Received ranked comments command with offset" offset "and ranked reactions" ranked-reactions)
+    (generate-string {:items (map #(adapters/sanitize-issue-for-api % false) (db/get-ranked-comments (Integer/parseInt offset) ranked-reactions))}))
 
 (defn- get-comments-response-for-issues [request]
-    (let [body (let [params (:params request)]
-                   (cond (and (:issue-id params) (:offset params)) (get-comments-for-issues (:issue-id params) (:offset params))
-                         (:issue-id params) (get-comments-for-issues (:issue-id params))
-                         :else nil))]
-        {:status  (if (nil? body) 404 200)
-         :headers {"Content-Type" "application/json"}
-         :body    (if (nil? body) {} body)}))
+    (generate-string
+        (let [body (let [params (:params request)]
+                       (cond (and (:issue-id params) (:offset params)) (get-comments-for-issues (:issue-id params) (Integer/parseInt (:offset params)))
+                             (:issue-id params) (get-comments-for-issues (:issue-id params))
+                             :else nil))]
+            (if (nil? body)
+                (not-found request)
+                {:status  200
+                 :headers {"Content-Type" "application/json"}
+                 :body    body}))))
 
 (defroutes app-routes
            (GET "/" [] landing-page)
@@ -84,13 +90,13 @@
            (GET "/comments" request (get-comments-response-for-issues request))
            (GET "/ranked-issues" request
                (let [params (:params request)]
-                   (cond (and (:reaction params) (:offset params)) (get-ranked-issues (:offset params) (:reaction params))
-                         (:reaction params) (get-ranked-issues 0 (:reaction params))
+                   (cond (and (:reaction params) (:offset params)) (get-ranked-issues (:offset params) [(:reaction params)])
+                         (:reaction params) (get-ranked-issues 0 [(:reaction params)])
                          :else (not-found request))))
            (GET "/ranked-comments" request
                (let [params (:params request)]
-                   (cond (and (:reaction params) (:offset params)) (get-ranked-comments (:offset params) (:reaction params))
-                         (:reaction params) (get-ranked-comments 0 (:reaction params))
+                   (cond (and (:reaction params) (:offset params)) (get-ranked-comments (:offset params) [(:reaction params)])
+                         (:reaction params) (get-ranked-comments 0 [(:reaction params)])
                          :else (not-found request))))
            (route/resources "/")
            (route/not-found "Not Found"))

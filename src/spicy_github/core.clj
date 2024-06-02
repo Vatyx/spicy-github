@@ -17,7 +17,7 @@
 
 (def cli-options
     [["-s" "--scrape SCRAPE" "Scrape github"
-      :default true
+      :default false
       :parse-fn #(Boolean/parseBoolean %)]
      ["-r" "--remap REMAP" "Remap issues and comments"
       :default false
@@ -37,4 +37,6 @@
     (.start (Thread. spicy-rating/forever-rate-issues!))
     (.start (Thread. spicy-rating/forever-rate-comments!))
     (.start (Thread. spicy-rating/forever-migrate-highly-rated-comments!))
-    (jetty/run-jetty (app/app) {:port (app-port)}))
+    (let [app-port (app-port)]
+        (timbre/info "Starting application server on port" app-port)
+        (jetty/run-jetty (app/app) {:port app-port})))
