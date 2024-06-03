@@ -7,7 +7,13 @@
 (def issue-count 5)
 (def minimum-spicy-score 5)
 
-(def spicy-endpoint (str (spicy-env :spicy-endpoint) ":" (spicy-env :front-end-port) "/"))
+(def spicy-endpoint (str (spicy-env :spicy-endpoint)
+                         (let [port (spicy-env :front-end-port)]
+                             (if (= port "80")
+                                 ""
+                                 (str ":" port)))
+                         "/"))
+
 (defn spicy-random-endpoint
     ([] (spicy-random-endpoint issue-count))
     ([n] (str spicy-endpoint "random-issues/" n)))

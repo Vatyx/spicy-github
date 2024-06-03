@@ -104,23 +104,43 @@
             mapped-comment
             (conj mapped-comment {:comment/parent-comment parent-comment-id}))))
 
-(defn sanitize-issue-for-api [issue]
+(defn sanitize-comment-for-api-v2 [comment]
+    (let [parent-comment-id (:comment/parent-comment comment)
+          mapped-comment {:comment/id       (:comment/id comment)
+                          :comment/body     (:comment/body comment)
+                          :comment/user     (:comment/user_id comment)
+                          :comment/reaction (parse-json (:comment/reaction_json comment))}]
+        (if (nil? parent-comment-id)
+            mapped-comment
+            (conj mapped-comment {:comment/parent-comment parent-comment-id}))))
+
+(defn sanitize-issue-for-api [issue include-comments]
     (let [spicy-comments (:issue/spicy-comments issue)
           spicy-comments-by-id (into {} (map (fn [spicy-comment] {(:spicy-comment/id spicy-comment) spicy-comment}) spicy-comments))]
-        {:issue/id           (:issue/id issue)
-         :issue/html-url     (:issue/html-url issue)
-         :issue/title        (:issue/title issue)
-         :issue/body         (:issue/body issue)
-         :issue/user         (sanitize-user-for-api (:issue/user issue))
-         :issue/comments     (map sanitize-comment-for-api
-                                  (map
-                                      (fn [comment] (conj comment {:comment/spicy-comment (get spicy-comments-by-id (:comment/id comment))}))
-                                      (:issue/comments issue)))
-         :issue/spicy-rating (if
-                                 (nil? (:issue/spicy-issue issue))
-                                 0
-                                 (-> issue :issue/spicy-issue :spicy-issue/total-rating))
-         :issue/reaction     (parse-json (:issue/reaction-json issue))}))
+        (merge {:issue/id           (:issue/id issue)
+                :issue/html-url     (:issue/html-url issue)
+                :issue/title        (:issue/title issue)
+                :issue/body         (:issue/body issue)
+                :issue/user         (sanitize-user-for-api (:issue/user issue))
+                :issue/spicy-rating (if
+                                        (nil? (:issue/spicy-issue issue))
+                                        0
+                                        (-> issue :issue/spicy-issue :spicy-issue/total-rating))
+                :issue/reaction     (parse-json (:issue/reaction-json issue))}
+               (if include-comments
+                   {:issue/comments (map sanitize-comment-for-api
+                                         (map
+                                             (fn [comment] (conj comment {:comment/spicy-comment (get spicy-comments-by-id (:comment/id comment))}))
+                                             (:issue/comments issue)))}
+                   {}))))
+
+(defn sanitize-issue-for-api-v2 [issue]
+    (merge {:issue/id       (:issue/id issue)
+            :issue/html-url (:issue/html_url issue)
+            :issue/title    (:issue/title issue)
+            :issue/body     (:issue/body issue)
+            :issue/user     (:issue/user_id issue)
+            :issue/reaction (parse-json (:issue/reaction_json issue))}))
 
 (defn checkpoint-create [checkpoint-id current-time]
     {:checkpoint/id checkpoint-id :checkpoint/json-payload (generate-string {:time current-time}) :checkpoint/updated-at (Instant/now)})

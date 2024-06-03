@@ -19,5 +19,7 @@ projectFilesBackup*
 resources/token.edn
 .lein-env
 resources/public/javascript/front_end.js
+resources/public/javascript/front_end.js.map
+resources/public/javascript/output/
 logs/
 out/

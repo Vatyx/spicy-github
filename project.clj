@@ -10,6 +10,7 @@
                    [clj-http "3.12.3"]
                    [cheshire "5.11.0"]
                    [ring "1.10.0"]
+                   [ring-cors "0.1.13"]
                    [ring/ring-defaults "0.3.4"]
                    [metosin/malli "0.12.0"]
                    [hiccup "2.0.0-RC1"]
@@ -41,8 +42,10 @@
     :ring {:handler spicy-github.api/app}
     :cljsbuild {:builds [{:source-paths ["front_end/src"]
                           :compiler     {:output-to     "resources/public/javascript/front_end.js"
+                                         :output-dir    "resources/public/javascript/output"
                                          :optimizations :advanced
-                                         :pretty-print  false}
+                                         :pretty-print  false
+                                         :source-map    "resources/public/javascript/front_end.js.map"}
                           :jar          true}]}
     :clean-targets ^{:protect false} [:target-path "resources/public/javascript/front_end.js"]
     :profiles {:dev          [:project/dev :profiles/dev]

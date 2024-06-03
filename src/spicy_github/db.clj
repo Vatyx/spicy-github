@@ -3,8 +3,8 @@
     (:require [clojure.edn :as edn]
               [clojure.string :as cs]
               [gungnir.changeset :as c]
-              [gungnir.database]
-              [gungnir.model]
+              [gungnir.database :as d]
+              [gungnir.model :as m]
               [gungnir.migration]
               [gungnir.transaction :as transaction]
               [gungnir.query :as q]
@@ -25,6 +25,8 @@
     (to-json [dt gen]
         (cheshire.generate/write-string gen (str dt))))
 
+(def default-page-size 25)
+
 (defn- db-server-name [] (load-env :rds-hostname "RDS_HOSTNAME" :RDS_HOSTNAME))
 (defn- db-port [] (Integer/parseInt (load-env :rds-port "RDS_PORT" :RDS_PORT)))
 (defn- db-name [] (load-env :rds-db-name "RDS_DB_NAME" :RDS_DB_NAME))
@@ -38,6 +40,8 @@
      :username      (db-username)
      :password      (db-password)
      :port-number   (db-port)})
+
+(def allowed-reaction-keys #{"heart" "eyes" "-1" "hooray" "confused" "+1" "laugh" "rocket"})
 
 (defn- log-and-return-migration [migration]
     (timbre/info (str "Loading migration " migration))
@@ -60,7 +64,7 @@
                                (filter (fn [path] (cs/ends-with? path ".edn")))
                                (sort))))))))
 
-(defn register-db! [] (gungnir.database/make-datasource! (db-config)))
+(defn register-db! [] (d/make-datasource! (db-config)))
 
 (defn- load-resources [] (spicy-load-resources "migrations"))
 
@@ -90,7 +94,7 @@
 
 (defn persist!
     ([changeset query-by-id! clean-record equality-check?]
-     (persist! changeset gungnir.database/*datasource* query-by-id! clean-record equality-check?))
+     (persist! changeset d/*datasource* query-by-id! clean-record equality-check?))
     ([{:changeset/keys [_] :as changeset} datasource query-by-id! clean-record equality-check?]
      (let [input-record (:changeset/result changeset)
            diff (:changeset/diff changeset)]
@@ -98,12 +102,12 @@
              (if (some? existing)
                  (if (equality-check? existing input-record)
                      existing
-                     (let [updated-record (gungnir.database/update! (clean-record existing diff) datasource)
+                     (let [updated-record (d/update! (clean-record existing diff) datasource)
                            update-errors (:changeset/errors updated-record)]
                          (if (some? update-errors)
                              input-record
                              updated-record)))
-                 (let [_ (gungnir.database/insert! changeset datasource)]
+                 (let [_ (d/insert! changeset datasource)]
                      input-record))))))
 
 (defn persist-record! [record]
@@ -125,7 +129,6 @@
             (timbre/error (str e))
             record)))
 
-(def default-page-size 100)
 
 (defn get-by-id! [table id] (q/find! table id))
 
@@ -146,52 +149,40 @@
     ([table query-relations!] (get-n-random! table query-relations! {}))
     ([table query-relations! query-map] (get-n-random! table query-relations! query-map default-page-size))
     ([table query-relations! query-map n]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> (merge {:select [:*] :limit n :tablesample "system(5)"} query-map)
-                             (q/all! table))))))))
+     (doall (map query-relations!
+                 (-> (merge {:select [:*] :limit n :tablesample "system(5)"} query-map)
+                     (q/all! table))))))
 
 (defn get-n-latest-before!
     ([table query-relations! before] (get-n-latest-before! table query-relations! default-page-size before))
     ([table query-relations! n before]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> (helpers/where [:< :updated-at before])
-                             (helpers/order-by [:updated-at :desc])
-                             (helpers/limit n)
-                             (q/all! table)))))))
+     (doall (map query-relations!
+                 (-> (helpers/where [:< :updated-at before])
+                     (helpers/order-by [:updated-at :desc])
+                     (helpers/limit n)
+                     (q/all! table)))))
     ([table query-relations! n before where-clause]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> where-clause
-                             (helpers/where [:< :updated-at before])
-                             (helpers/order-by [:updated-at :desc])
-                             (helpers/limit n)
-                             (q/all! table))))))))
-
-
+     (doall (map query-relations!
+                 (-> where-clause
+                     (helpers/where [:< :updated-at before])
+                     (helpers/order-by [:updated-at :desc])
+                     (helpers/limit n)
+                     (q/all! table))))))
 
 (defn get-n-oldest!
     ([table query-relations! n]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> (helpers/order-by :updated-at)
-                             (helpers/limit n)
-                             (q/all! table))))))))
+     (doall (map query-relations!
+                 (-> (helpers/order-by :updated-at)
+                     (helpers/limit n)
+                     (q/all! table))))))
 
 (defn get-n-oldest-before!
     ([table query-relations! n before]
-     (transaction/execute!
-         (fn []
-             (doall (map query-relations!
-                         (-> (helpers/where [:< :updated-at before])
-                             (helpers/order-by :updated-at)
-                             (helpers/limit n)
-                             (q/all! table))))))))
+     (doall (map query-relations!
+                 (-> (helpers/where [:< :updated-at before])
+                     (helpers/order-by :updated-at)
+                     (helpers/limit n)
+                     (q/all! table))))))
 
 (defn query-comment-relations! [comment]
     (q/load! comment :comment/user))
@@ -263,3 +254,46 @@
         (if (>= (count result) n)
             result
             (recur (concat result (retrieval-fn))))))
+
+; New APIs
+; --------
+
+(defn get-comments-for-issue [issue-id offset]
+    (-> (helpers/select :*)
+        (helpers/from :comment)
+        (helpers/where [:= :comment/issue-id issue-id])
+        (helpers/order-by :comment/id)
+        (helpers/offset offset)
+        (helpers/limit default-page-size)
+        (q/all!)))
+
+(defn get-comment-count-for-issue [issue-id]
+    (-> (jdbc/execute!
+            d/*datasource*
+            (-> (helpers/select :%count.*)
+                (helpers/from :comment)
+                (helpers/where [:= :comment/issue-id issue-id])
+                (sql/format)))
+        (first)
+        (:count)))
+
+(defn- get-reaction-ranked-items [offset ordered-reaction-keys table table-id]
+    (let [filtered-ordered-reaction-keys (filter (fn [reaction-key] (contains? allowed-reaction-keys reaction-key)) ordered-reaction-keys)]
+        (if (empty? filtered-ordered-reaction-keys)
+            (-> (helpers/select :*)
+                (helpers/from table)
+                (helpers/order-by table-id)
+                (helpers/offset offset)
+                (helpers/limit default-page-size)
+                (q/all!))
+            (jdbc/execute!
+                d/*datasource*
+                [(str "SELECT * FROM " (name table) " ORDER BY " (cs/join ", " (map (fn [reaction-key] (str "(reaction_json::json->>'" reaction-key "')::int desc")) filtered-ordered-reaction-keys)) " OFFSET ? LIMIT ?")
+                 offset
+                 default-page-size]))))
+
+(defn get-ranked-issues [offset ordered-reaction-keys]
+    (get-reaction-ranked-items offset ordered-reaction-keys :issue :issue/id))
+
+(defn get-ranked-comments [offset ordered-reaction-keys]
+    (get-reaction-ranked-items offset ordered-reaction-keys :comment :comment/id))
