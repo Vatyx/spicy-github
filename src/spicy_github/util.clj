@@ -35,12 +35,15 @@
     ([keyword env-var-name env-json-keyword]
      (load-env keyword env-var-name env-json-keyword ""))
     ([keyword env-var-name env-json-keyword default-value]
+     (timbre/info (str "Loading env " keyword))
      (let [env-var (if-let [spicy-value (environ.core/env keyword)]
                        spicy-value
-                       (if-let [env-value (System/getenv env-var-name)]
-                           env-value
-                           (let [env-json (parse-json (:out (sh "sudo" "/opt/elasticbeanstalk/bin/get-config" "environment")))]
-                               (env-json-keyword env-json))))]
+                       (try (-> (sh "sudo" "/opt/elasticbeanstalk/bin/get-config" "environment")
+                                :out
+                                parse-json
+                                env-json-keyword)
+                            (catch Exception _
+                                default-value)))]
          (if env-var env-var default-value))))
 
 (defn load-resource [resource-name]
