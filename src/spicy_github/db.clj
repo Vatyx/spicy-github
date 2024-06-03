@@ -288,7 +288,7 @@
                 (q/all!))
             (jdbc/execute!
                 d/*datasource*
-                [(str "SELECT * FROM issue ORDER BY " (cs/join ", " (map (fn [reaction-key] (str "(reaction_json::json->>'" reaction-key "')::int desc")) filtered-ordered-reaction-keys)) " OFFSET ? LIMIT ?")
+                [(str "SELECT * FROM " (name table) " ORDER BY " (cs/join ", " (map (fn [reaction-key] (str "(reaction_json::json->>'" reaction-key "')::int desc")) filtered-ordered-reaction-keys)) " OFFSET ? LIMIT ?")
                  offset
                  default-page-size]))))
 

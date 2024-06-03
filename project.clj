@@ -10,6 +10,7 @@
                    [clj-http "3.12.3"]
                    [cheshire "5.11.0"]
                    [ring "1.10.0"]
+                   [ring-cors "0.1.13"]
                    [ring/ring-defaults "0.3.4"]
                    [metosin/malli "0.12.0"]
                    [hiccup "2.0.0-RC1"]

@@ -13,6 +13,7 @@
                                  ""
                                  (str ":" port)))
                          "/"))
+
 (defn spicy-random-endpoint
     ([] (spicy-random-endpoint issue-count))
     ([n] (str spicy-endpoint "random-issues/" n)))

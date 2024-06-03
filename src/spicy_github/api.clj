@@ -3,6 +3,7 @@
     (:require [compojure.core :refer :all]
               [compojure.route :as route]
               [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
+              [ring.middleware.cors :refer [wrap-cors]]
               [ring.middleware.reload :refer [wrap-reload]]
               [spicy-github.frontend :as frontend]
               [spicy-github.adapters :as adapters]
@@ -60,15 +61,15 @@
      (timbre/info "Received get comments for issues command with offset" offset "and issue-id" issue-id)
      (let [comment-count (db/get-comment-count-for-issue issue-id)]
          {:total-count comment-count
-          :items       (map adapters/sanitize-comment-for-api (db/get-comments-for-issue issue-id offset))})))
+          :items       (map adapters/sanitize-comment-for-api-v2 (db/get-comments-for-issue issue-id offset))})))
 
 (defn- get-ranked-issues [offset ranked-reactions]
     (timbre/info "Received ranked issues command with offset" offset "and ranked reactions" ranked-reactions)
-    (generate-string {:items (map #(adapters/sanitize-issue-for-api % false) (db/get-ranked-issues (Integer/parseInt offset) ranked-reactions))}))
+    (generate-string {:items (map adapters/sanitize-issue-for-api-v2 (db/get-ranked-issues offset ranked-reactions))}))
 
 (defn- get-ranked-comments [offset ranked-reactions]
     (timbre/info "Received ranked comments command with offset" offset "and ranked reactions" ranked-reactions)
-    (generate-string {:items (map #(adapters/sanitize-issue-for-api % false) (db/get-ranked-comments (Integer/parseInt offset) ranked-reactions))}))
+    (generate-string {:items (map adapters/sanitize-comment-for-api-v2 (db/get-ranked-comments offset ranked-reactions))}))
 
 (defn- get-comments-response-for-issues [request]
     (generate-string
@@ -88,14 +89,16 @@
            (GET "/random-issues/" [] (get-n-random-issues-api! (str minimum-count)))
            (GET "/random-issues/:n" [n] (get-n-random-issues-api! n))
            (GET "/comments" request (get-comments-response-for-issues request))
+           (GET "/ranked-issues/" [] (get-ranked-issues 0 []))
            (GET "/ranked-issues" request
                (let [params (:params request)]
-                   (cond (and (:reaction params) (:offset params)) (get-ranked-issues (:offset params) [(:reaction params)])
+                   (cond (and (:reaction params) (:offset params)) (get-ranked-issues (Integer/parseInt (:offset params)) [(:reaction params)])
                          (:reaction params) (get-ranked-issues 0 [(:reaction params)])
                          :else (not-found request))))
+           (GET "/ranked-comments/" [] (get-ranked-comments 0 []))
            (GET "/ranked-comments" request
                (let [params (:params request)]
-                   (cond (and (:reaction params) (:offset params)) (get-ranked-comments (:offset params) [(:reaction params)])
+                   (cond (and (:reaction params) (:offset params)) (get-ranked-comments (Integer/parseInt (:offset params)) [(:reaction params)])
                          (:reaction params) (get-ranked-comments 0 [(:reaction params)])
                          :else (not-found request))))
            (route/resources "/")
@@ -103,7 +106,11 @@
 
 (defn- app-with-defaults [reload-server]
     (timbre/info (str "Loading application (reload server:" reload-server ")"))
-    (wrap-defaults app-routes site-defaults))
+    (wrap-cors (wrap-defaults app-routes site-defaults)
+               :access-control-allow-credentials "true"
+               :access-control-allow-origin [#".*"]
+               :access-control-allow-headers #{"accept" "accept-encoding" "accept-language" "authorization" "content-type" "origin"}
+               :access-control-allow-methods [:get]))
 
 (defn app []
     (let [reload-server (parse-boolean (load-env :reload-server "RELOAD_SERVER" :RELOAD_SERVER "false"))]
