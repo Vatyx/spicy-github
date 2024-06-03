@@ -42,12 +42,12 @@
     :ring {:handler spicy-github.api/app}
     :cljsbuild {:builds [{:source-paths ["front_end/src"]
                           :compiler     {:output-to     "resources/public/javascript/front_end.js"
-                                         :output-dir    "resources/public/javascript/output"
+                                         :output-dir    "resources/public/javascript/output/"
                                          :optimizations :advanced
                                          :pretty-print  false
                                          :source-map    "resources/public/javascript/front_end.js.map"}
                           :jar          true}]}
-    :clean-targets ^{:protect false} [:target-path "resources/public/javascript/front_end.js"]
+    :clean-targets ^{:protect false} [:target-path "resources/public/javascript/front_end.js" "resources/public/javascript/front_end.js.map" "resources/public/javascript/output"]
     :profiles {:dev          [:project/dev :profiles/dev]
                :run          [:project/dev :profiles/dev]
                :uberjar      {:aot      :all
@@ -55,6 +55,7 @@
                :profiles/dev {}
                :project/dev  {:dependencies [[javax.servlet/servlet-api "2.5"]
                                              [ring/ring-mock "0.3.2"]]}}
+
     :aliases {"db-reset"    ["run" "-m" "spicy-github.db/reset-db!"]
               "db-migrate"  ["run" "-m" "spicy-github.db/migrate-db!"]
               "db-rollback" ["run" "-m" "spicy-github.db/rollback-db!"]
