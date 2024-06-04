@@ -23,7 +23,7 @@
                    [net.cgrand/xforms "0.19.5"]
                    [honeysql "1.0.461"]
                    [rum "0.12.11"]
-                   [environ "1.2.0"]
+                   [lein-environ "1.2.0"]
                    [stylefy "3.2.0"]
                    [stylefy/rum "3.0.0"]
                    [com.taoensso/timbre "6.3.1"]
