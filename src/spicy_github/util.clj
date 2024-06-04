@@ -38,7 +38,7 @@
      (timbre/info (str "Loading env " keyword))
      (let [env-var (if-let [spicy-value (environ.core/env keyword)]
                        spicy-value
-                       (try (-> (sh "sudo" "/opt/elasticbeanstalk/bin/get-config" "environment")
+                       (try (->> (sh "sudo" "/opt/elasticbeanstalk/bin/get-config" "environment")
                                 :out
                                 parse-json
                                 env-json-keyword)
