@@ -1,0 +1,5 @@
+{:lein true
+ :builds {:app {:output-dir "resources/public/js"
+                :asset-path "/js"
+                :target     :browser
+                :modules    {:main {:entries [front-end.frontend]}}}}}
