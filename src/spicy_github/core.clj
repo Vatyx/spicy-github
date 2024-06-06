@@ -6,7 +6,6 @@
         [spicy-github.db :as db]
         [spicy-github.logging :as logging]
         [spicy-github.scraper :as scraper]
-        [spicy-github.spicy-rating :as spicy-rating]
         [spicy-github.dev :as dev]
         [spicy-github.api :as app]
         [clojure.tools.cli :as cli]
@@ -23,8 +22,7 @@
       :default false
       :parse-fn #(Boolean/parseBoolean %)]])
 
-(defn -main
-    [& args]
+(defn -main [& args]
     (logging/initialize!)
     (db/initialize!)
     (let [opts (cli/parse-opts args cli-options)]
@@ -34,9 +32,9 @@
             (.start (Thread. scraper/process-scraped-repositories)))
         (when (or (-> opts :options :remap) (dev/should-remap-db))
             (.start (Thread. dev/remap-db!))))
-    (.start (Thread. spicy-rating/forever-rate-issues!))
-    (.start (Thread. spicy-rating/forever-rate-comments!))
-    (.start (Thread. spicy-rating/forever-migrate-highly-rated-comments!))
+    ;(.start (Thread. spicy-rating/forever-rate-issues!))
+    ;(.start (Thread. spicy-rating/forever-rate-comments!))
+    ;(.start (Thread. spicy-rating/forever-migrate-highly-rated-comments!))
     (let [app-port (app-port)]
         (timbre/info "Starting application server on port" app-port)
-        (jetty/run-jetty (app/app) {:port app-port})))
+        (jetty/run-jetty (app/app) {:port app-port :join? false})))

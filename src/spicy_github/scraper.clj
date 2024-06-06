@@ -248,7 +248,11 @@
 (defn scrape-repositories-with-star-step [starting-star-count ending-star-count star-step]
     (loop [max-stars starting-star-count
            min-stars (- max-stars star-step)]
-        (scrape-repositories min-stars max-stars)
+        (try
+            (scrape-repositories min-stars max-stars)
+            (catch Exception e
+                (clojure.stacktrace/print-stack-trace e)
+                (timbre/error (str e))))
         (if (< max-stars ending-star-count)
             nil
             (recur (- max-stars star-step)
