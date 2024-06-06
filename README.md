@@ -4,17 +4,21 @@ The spice must flow.
 
 ## Dev
 
+Install packages
+
+    $ yarn install
+
 To run
 
     $ lein run --scrape=false
 
 To compile ClojureScript for dev
 
-    $ lein cljsbuild once
+    $ npx shadow-cljs compile app
 
 To auto-watch and re-compile Clojurescript on the fly
 
-    $ lein cljsbuild auto
+    $ npx shadow-cljs watch app
 
 To initialize the db
     
