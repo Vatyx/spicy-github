@@ -1,4 +1,4 @@
-(ns spicy-github.api
+(ns front-end.api
     (:require-macros [cljs.core.async.macros :refer [go]]
                      [spicy-github.env :refer [spicy-env]])
     (:require [cljs-http.client :as http]

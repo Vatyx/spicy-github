@@ -1,9 +1,9 @@
-(ns spicy-github.frontend
+(ns front-end.frontend
     (:require
         [rum.core :as rum]
         [stylefy.core :as stylefy]
         [stylefy.rum :as stylefy-rum]
-        [spicy-github.api :as api]))
+        [front-end.api :as api]))
 
 (defn frontend-initialize! [] (stylefy/init {:dom (stylefy-rum/init)}))
 

@@ -1,4 +1,6 @@
 lein clean
+yarn install
+npx shadow-cljs compile app
 lein uberjar
 $version = "1.0-" + (Get-Date -format "yyyy-MM-dd_HH-mm-ss")
 $filename = "spicy-github_" + $version + ".jar"

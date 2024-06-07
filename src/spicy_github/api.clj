@@ -113,9 +113,15 @@
                :access-control-allow-methods [:get]))
 
 (defn app []
-    (let [reload-server (parse-boolean (load-env :reload-server "RELOAD_SERVER" :RELOAD_SERVER "false"))]
-        (if (nil? reload-server)
-            (app-with-defaults false)
-            (if reload-server
-                (wrap-reload (app-with-defaults true))
-                (app-with-defaults false)))))
+    (wrap-reload #'app-routes))
+
+(comment
+
+    (defn app []
+     (let [reload-server (parse-boolean (load-env :reload-server "RELOAD_SERVER" :RELOAD_SERVER "false"))]
+         (if (nil? reload-server)
+             (app-with-defaults false)
+             (if reload-server
+                 (wrap-reload (app-with-defaults true))
+                 (app-with-defaults false)))))
+    )

@@ -32,6 +32,8 @@
     (json/parse-string json-str true))
 
 (defn load-env
+    ([keyword]
+     (environ.core/env keyword))
     ([keyword env-var-name env-json-keyword]
      (load-env keyword env-var-name env-json-keyword ""))
     ([keyword env-var-name env-json-keyword default-value]

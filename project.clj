@@ -4,7 +4,8 @@
     :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
               :url  "https://www.eclipse.org/legal/epl-2.0/"}
     :dependencies [[org.clojure/clojure "1.11.1"]
-                   [org.clojure/clojurescript "1.11.60"]
+                   [thheller/shadow-cljs "2.28.5"]
+
                    [org.clojure/data.json "2.4.0"]
                    [dev.nubank/clj-github "0.6.2"]
                    [clj-http "3.12.3"]
@@ -36,25 +37,29 @@
     :aot [spicy-github.core]
     :target-path "target/%s"
     :plugins [[lein-ring "0.12.6"]
-              [lein-cljsbuild "1.1.8"]
-              [lein-environ "1.2.0"]]
-    :hooks [leiningen.cljsbuild]
+              [lein-environ "1.2.0"]
+              [lein-pprint "1.3.2"]]
     :ring {:handler spicy-github.api/app}
-    :cljsbuild {:builds [{:source-paths ["front_end/src"]
-                          :compiler     {:output-to     "resources/public/javascript/front_end.js"
-                                         :output-dir    "resources/public/javascript/output/"
-                                         :optimizations :advanced
-                                         :pretty-print  false
-                                         :source-map    "resources/public/javascript/front_end.js.map"}
-                          :jar          true}]}
-    :clean-targets ^{:protect false} [:target-path "resources/public/javascript/front_end.js" "resources/public/javascript/front_end.js.map" "resources/public/javascript/output"]
-    :profiles {:dev          [:project/dev :profiles/dev]
-               :run          [:project/dev :profiles/dev]
+    :env {:spicy-endpoint "http://localhost",
+          :front-end-port "5000"
+          :reload-server  "true",
+          :rds-hostname   "localhost",
+          :rds-port       "5432",
+          :rds-db-name    "spicy-github",
+          :rds-username   "postgres",
+          :rds-password   "",
+          :log-level      "debug"}
+    :clean-targets ^{:protect false} [:target-path "resources/public/js"]
+    :profiles {:dev          {:dependencies [[javax.servlet/servlet-api "2.5"]
+                                             [ring/ring-mock "0.3.2"]
+                                             [nrepl/nrepl "1.1.1"]
+                                             [org.nrepl/incomplete "0.1.0"]]}
                :uberjar      {:aot      :all
-                              :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
-               :profiles/dev {}
-               :project/dev  {:dependencies [[javax.servlet/servlet-api "2.5"]
-                                             [ring/ring-mock "0.3.2"]]}}
+                              :jvm-opts ["-Dclojure.compiler.direct-linking=true"]
+                              :env {:spicy-endpoint "https://gitfeed.app"
+                                    :front-end-port "80"}}
+               :jar          {:env {:spicy-endpoint "https://gitfeed.app"
+                                    :front-end-port "80"}}}
 
     :aliases {"db-reset"    ["run" "-m" "spicy-github.db/reset-db!"]
               "db-migrate"  ["run" "-m" "spicy-github.db/migrate-db!"]
