@@ -8,11 +8,12 @@
         [spicy-github.scraper :as scraper]
         [spicy-github.dev :as dev]
         [spicy-github.api :as app]
+        [spicy-github.spicy-rating :as spicy-rating]
         [clojure.tools.cli :as cli]
         [taoensso.timbre :as timbre]))
 
-(defn app-port []
-    (Integer/parseInt (load-env :front-end-port "PORT" :PORT "5000")))
+(def app-port
+    (Integer/parseInt (load-env :front-end-port)))
 
 (def cli-options
     [["-s" "--scrape SCRAPE" "Scrape github"
@@ -22,19 +23,39 @@
       :default false
       :parse-fn #(Boolean/parseBoolean %)]])
 
-(defn -main [& args]
-    (logging/initialize!)
-    (db/initialize!)
+(defn start-scraper! []
+    (timbre/info "Beginning github scraping...")
+    (.start (Thread. scraper/scrape-all-repositories))
+    (.start (Thread. scraper/process-scraped-repositories)))
+
+(defn start-remapper! []
+    (.start (Thread. dev/remap-db!)))
+
+(defn start-rating! []
+    (.start (Thread. spicy-rating/forever-rate-issues!))
+    (.start (Thread. spicy-rating/forever-rate-comments!))
+    (.start (Thread. spicy-rating/forever-migrate-highly-rated-comments!)))
+
+(defn start-web-server! []
+    (timbre/info "Starting application server on port" app-port)
+    (jetty/run-jetty (app/app) {:port app-port :join? false}))
+
+(defn has-option [args option]
     (let [opts (cli/parse-opts args cli-options)]
-        (when (-> opts :options :scrape)
-            (timbre/info "Beginning github scraping...")
-            (.start (Thread. scraper/scrape-all-repositories))
-            (.start (Thread. scraper/process-scraped-repositories)))
-        (when (or (-> opts :options :remap) (dev/should-remap-db))
-            (.start (Thread. dev/remap-db!))))
-    ;(.start (Thread. spicy-rating/forever-rate-issues!))
-    ;(.start (Thread. spicy-rating/forever-rate-comments!))
-    ;(.start (Thread. spicy-rating/forever-migrate-highly-rated-comments!))
-    (let [app-port (app-port)]
-        (timbre/info "Starting application server on port" app-port)
-        (jetty/run-jetty (app/app) {:port app-port :join? false})))
+        (-> opts
+            :option
+            option)))
+
+; Exists outside of -main so it also runs when starting a REPL
+(logging/initialize!)
+(db/initialize!)
+
+(defn -main [& args]
+    (when (has-option args :scrape)
+        (start-scraper!))
+
+    (when (or (has-option args :remap) (dev/should-remap-db))
+        (start-remapper!))
+
+    (start-web-server!))
+
