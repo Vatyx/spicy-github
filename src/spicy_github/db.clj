@@ -14,7 +14,7 @@
               [clojure.stacktrace]
               [cheshire.core :refer :all]
               [next.jdbc :as jdbc]
-        ; this must be here so our models get initialized
+            ; this must be here so our models get initialized
               [spicy-github.model :as model]
               [spicy-github.util :refer :all])
     (:import (java.time Instant)))
@@ -27,11 +27,11 @@
 
 (def default-page-size 25)
 
-(defn- db-server-name [] (load-env :rds-hostname "RDS_HOSTNAME" :RDS_HOSTNAME))
-(defn- db-port [] (Integer/parseInt (load-env :rds-port "RDS_PORT" :RDS_PORT)))
-(defn- db-name [] (load-env :rds-db-name "RDS_DB_NAME" :RDS_DB_NAME))
-(defn- db-username [] (load-env :rds-username "RDS_USERNAME" :RDS_USERNAME))
-(defn- db-password [] (load-env :rds-password "RDS_PASSWORD" :RDS_PASSWORD))
+(defn- db-server-name [] (load-env :rds-hostname))
+(defn- db-port [] (Integer/parseInt (load-env :rds-port)))
+(defn- db-name [] (load-env :rds-db-name))
+(defn- db-username [] (load-env :rds-username))
+(defn- db-password [] (load-env :rds-password))
 
 (defn- db-config []
     {:adapter       "postgresql"
@@ -123,7 +123,8 @@
 
 (defn persist-record-exception-safe! [record]
     (try
-        (persist-record! record)
+        (when (some? record)
+            (persist-record! record))
         (catch Exception e
             (clojure.stacktrace/print-stack-trace e)
             (timbre/error (str e))

@@ -264,8 +264,9 @@
     (scrape-repositories-with-star-step 50000 20000 2000)
     (scrape-repositories-with-star-step 10000 1000 1000))
 
-
 (comment
+    (scrape-all-repositories)
+
     ; How to run scraper
 
     ; Get repo url
@@ -275,8 +276,8 @@
     (persist-repo repo-url)
 
     ; Fetch the last 10 unprocessed repos
-    (def repos-model (get-oldest-processed-repository!))
+    (def (repos-model get-oldest-processed-repository!))
 
     ; Process them
-    (process-repository-models repo)
+    (process-repositories [repos-model])
     )
