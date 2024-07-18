@@ -38,7 +38,7 @@
               [lein-pprint "1.3.2"]]
     :ring {:handler spicy-github.api/app}
     :env {:spicy-endpoint "http://localhost",
-          :front-end-port "5000"
+          :front-end-port "3000"
           :reload-server  "true",
           :rds-hostname   "localhost",
           :rds-port       "5432",
